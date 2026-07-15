@@ -770,6 +770,87 @@
     </div>
 
     <script>
+        // 흔들기 감지 상태 관리 변수
+let isMouseDown = false;
+let lastX = null;
+let lastY = null;
+let totalMovement = 0; // 흔든 누적 거리
+const SHAKE_THRESHOLD = 800; // 이 점수를 넘어야 완전히 섞임
+let shakeProgress = 0; // 0 ~ 100% 게이지
+
+const cupElement = document.getElementById('dice-cup');
+
+// ==========================================
+// 1. PC 환경: 마우스 드래그로 흔들기 구현
+// ==========================================
+cupElement.addEventListener('mousedown', (e) => {
+    isMouseDown = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    cupElement.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isMouseDown || lastX === null || lastY === null) return;
+
+    // 현재 마우스 위치와 이전 마우스 위치의 차이(이동 거리) 계산
+    const deltaX = Math.abs(e.clientX - lastX);
+    const deltaY = Math.abs(e.clientY - lastY);
+    const movement = deltaX + deltaY;
+
+    // 마우스를 빠르게 움직일 때만 흔들기 점수 누적
+    if (movement > 10) { 
+        totalMovement += movement;
+        
+        // 시각 효과: 통을 마우스 위치에 따라 미세하게 덜덜 떨리게 만듦
+        const offsetX = (Math.random() - 0.5) * 15;
+        const offsetY = (Math.random() - 0.5) * 15;
+        cupElement.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(${offsetX}deg)`;
+        
+        // 오디오 재생 로직 (예: 달그락 소리 호출)
+        playDiceShakeSound(movement);
+    }
+
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    // 흔들기 완료 조건 체크
+    checkShakeComplete();
+});
+
+window.addEventListener('mouseup', () => {
+    if (!isMouseDown) return;
+    isMouseDown = false;
+    cupElement.style.cursor = 'grab';
+    cupElement.style.transform = 'translate(0, 0) rotate(0deg)'; // 원래 위치로
+    
+    // 마우스를 뗐을 때 충분히 흔들었다면 주사위 투하!
+    triggerDiceDrop();
+});
+
+// ==========================================
+// 2. 모바일 환경: 자이로 센서 흔들기 (기존 유지)
+// ==========================================
+// (모바일 자이로 센서 이벤트 발생 시에도 totalMovement에 값을 누적하여 동일하게 처리)
+
+function checkShakeComplete() {
+    shakeProgress = Math.min((totalMovement / SHAKE_THRESHOLD) * 100, 100);
+    
+    // UI에 흔들기 게이지가 있다면 실시간 반영
+    updateShakeGauge(shakeProgress); 
+}
+
+function triggerDiceDrop() {
+    if (shakeProgress >= 100) {
+        // 주사위를 필드에 떨어뜨리는 애니메이션 실행 및 상태 전환
+        startDiceDropAnimation();
+        totalMovement = 0; // 게이지 초기화
+        shakeProgress = 0;
+    } else {
+        // 덜 흔들고 통을 놓았을 때의 예외 처리 (더 흔들라고 안내)
+        showHint("조금 더 격렬하게 흔들어주세요!");
+    }
+}
         const socket = io();
 
         let myId = null;
