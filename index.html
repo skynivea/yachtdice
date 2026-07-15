@@ -6,20 +6,21 @@
     <title>숫자 젤리 공장: 요트 다이스</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <style>
+ <style>
         :root {
-            --bg-wood: #e3c193;
-            --tray-border: #1a1a1a;
-            --tray-velvet: #8a1d23;
-            --holder-bg: #121212;
+            /* 🖤 촌스러운 가죽/나무 톤을 모던한 다크블랙 & 다크그레이 톤으로 교체 */
+            --bg-wood: #111115;          /* 외부 배경: 묵직한 카본 블랙 */
+            --tray-border: #1a1a1e;      /* 트레이 테두리: 다크 그레이 */
+            --tray-velvet: #1e1e24;      /* 벨벳 트레이: 무광 블랙 스킨 */
+            --holder-bg: #0b0b0d;        /* 키퍼 슬롯: 완전 블랙 */
             --dice-white: #ffffff;
             --dice-dot: #111111;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Malgun Gothic', sans-serif; user-select: none; }
-        body { background-color: #3e2723; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        body { background-color: #0c0c0e; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
 
-        #app { display: flex; width: 1200px; height: 800px; background: var(--bg-wood); border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); border: 10px solid #2d1a04; position: relative; }
+        #app { display: flex; width: 1200px; height: 800px; background: var(--bg-wood); border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); border: 10px solid #23232a; position: relative; }
 
         /* 대기실 / 로그인 화면 */
         #lobby { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.9); border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
@@ -54,7 +55,7 @@
         /* 🎲 중앙: 주사위 하드웨어 트레이 세트 */
         .tray-system-container { display: flex; justify-content: center; align-items: center; flex-grow: 1; gap: 30px; }
         
-        .tray-board { width: 420px; height: 500px; background: var(--tray-border); border-radius: 30px; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 10px 20px rgba(0,0,0,0.5); }
+        .tray-board { width: 420px; height: 500px; background: var(--tray-border); border-radius: 30px; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 10px 20px rgba(0,0,0,0.5); border: 2px solid #2e2e38; }
         
         /* 1. 홀드 홈 (Keeper Slots) */
         .hold-home { height: 75px; background: #000; border-radius: 15px; display: flex; justify-content: space-around; align-items: center; padding: 0 10px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); }
@@ -62,12 +63,14 @@
         .hold-slot.active { border-color: #ff5500; background: #1f1212; }
 
         /* 2. 벨벳 다이스 트레이 */
-        .dice-tray { flex-grow: 1; background: var(--tray-velvet); border-radius: 20px; position: relative; box-shadow: inset 0 10px 30px rgba(0,0,0,0.8); overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .dice-tray { flex-grow: 1; background: var(--tray-velvet); border-radius: 20px; position: relative; box-shadow: inset 0 10px 30px rgba(0,0,0,0.95); overflow: hidden; display: flex; justify-content: center; align-items: center; }
         
         /* 주사위 디자인 */
-        .dice { width: 52px; height: 52px; background: var(--dice-white); border-radius: 10px; box-shadow: 0 5px 10px rgba(0,0,0,0.4), inset 0 -4px 6px rgba(0,0,0,0.2); position: absolute; cursor: pointer; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 5px; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s, top 0.4s, opacity 0.3s; }
+        .dice { width: 52px; height: 52px; background: var(--dice-white); border-radius: 10px; box-shadow: 0 5px 10px rgba(0,0,0,0.6), inset 0 -4px 6px rgba(0,0,0,0.3); position: absolute; cursor: pointer; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 5px; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s, top 0.4s, opacity 0.3s; }
         .dice.held { position: static !important; width: 48px; height: 48px; box-shadow: none; border: 2px solid #ff5500; }
-        .dice.in-cup { opacity: 0; transform: scale(0.1) !important; pointer-events: none; } /* 컵에 숨겨졌을 때 상태 */
+        
+        /* 💡 컵에 숨겨졌을 때 상태 (완전 비활성화 및 안 보이게 숨김 처리) */
+        .dice.in-cup { opacity: 0; transform: scale(0.1) rotate(180deg) !important; pointer-events: none; } 
         
         .dice-dot { background: var(--dice-dot); border-radius: 50%; width: 8px; height: 8px; margin: auto; opacity: 0; }
         /* 주사위 눈금 배치 */
@@ -80,15 +83,17 @@
 
         /* 3. 우측 흔들기 컵 가죽 영역 */
         .cup-panel { display: flex; flex-direction: column; align-items: center; gap: 20px; }
-        .dice-cup { width: 140px; height: 180px; background: url('https://images.unsplash.com/photo-1547989453-11e67ffb3885?q=80&w=200&auto=format&fit=crop') center/cover; background-color: #111; border-radius: 70px 70px 10px 10px; border: 4px solid #3c1e08; box-shadow: 0 15px 25px rgba(0,0,0,0.6); cursor: grab; transition: transform 0.1s; transform-origin: bottom center; display: flex; align-items: center; justify-content: center; position: relative; }
+        
+        /* 🖤 못생긴 가죽 이미지 링크 제거 및 고급 매트 블랙 그라데이션으로 변경 */
+        .dice-cup { width: 140px; height: 180px; background: linear-gradient(135deg, #2e2e38 0%, #111115 100%); border-radius: 70px 70px 15px 15px; border: 4px solid #3f3f4e; box-shadow: 0 15px 30px rgba(0,0,0,0.8), inset 0 5px 15px rgba(255,255,255,0.05); cursor: grab; transition: transform 0.1s; transform-origin: bottom center; display: flex; align-items: center; justify-content: center; position: relative; }
         .dice-cup:active { cursor: grabbing; }
-        .cup-shadow { width: 140px; height: 20px; background: rgba(0,0,0,0.4); border-radius: 50%; filter: blur(5px); }
+        .cup-shadow { width: 140px; height: 20px; background: rgba(0,0,0,0.6); border-radius: 50%; filter: blur(6px); }
         .shake-count-badge { background: #ff5500; color: #fff; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; }
         .cup-btn { padding: 10px 20px; background: #222; border: 2px solid #ffaa00; border-radius: 8px; color: #ffaa00; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .cup-btn:hover { background: #ffaa00; color: #000; }
 
         /* 우측: 스코어보드 */
-        .score-area { width: 40%; height: 100%; background: #f0f0f0; border-left: 5px solid #2d1a04; padding: 20px; color: #333; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .score-area { width: 40%; height: 100%; background: #f0f0f0; border-left: 5px solid #23232a; padding: 20px; color: #333; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .score-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 3px solid #333; padding-bottom: 10px; }
         .score-header h2 { font-size: 24px; color: #000; font-weight: 900; }
         
