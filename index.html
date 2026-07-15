@@ -8,13 +8,13 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
-            --bg-dark-gray: #1a1a1a;
-            --bg-panel: #262626;
-            --velvet-burgundy: #6b1416; /* 🍷 안쪽 작은 네모 (버건디 벨벳) */
-            --outer-black: #0d0d0d;      /* 🔲 바깥쪽 큰 네모 (검은색) */
-            --accent-gold: #e5a93b;
-            --paper-white: #fafaf6;      /* 📝 종이 스코어보드 하얀색 */
-            --paper-border: #d4d4cb;
+            --bg-dark-gray: #121212;
+            --bg-panel: #1e1e1e;
+            --velvet-burgundy: #580f11; 
+            --outer-black: #080808;      
+            --accent-gold: #d4af37;
+            --paper-white: #f5f5ee;      
+            --paper-border: #cccccc;
         }
         body {
             background-color: var(--bg-dark-gray);
@@ -28,33 +28,22 @@
             touch-action: manipulation;
         }
         
-        /* 메인 홈 / 대기실 */
-        #main-home {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 80vh;
-            text-align: center;
-            width: 90%;
-            max-width: 450px;
-        }
-        .main-title {
-            font-size: 42px;
-            font-weight: 900;
-            color: var(--accent-gold);
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
-            letter-spacing: 2px;
-            margin-bottom: 40px;
-        }
-        .menu-box {
+        #main-home, #waiting-lobby {
             background: var(--bg-panel);
             border-radius: 16px;
-            border: 1px solid #3d3d3d;
+            border: 1px solid #333;
             padding: 30px;
-            width: 100%;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            box-sizing: border-box;
+            margin-top: 50px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .main-title {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--accent-gold);
+            margin-bottom: 30px;
         }
         .flat-input {
             width: 100%;
@@ -62,15 +51,11 @@
             font-size: 16px;
             border-radius: 8px;
             border: 1px solid #444;
-            background: #111;
+            background: #000;
             color: #fff;
             margin-bottom: 16px;
             text-align: center;
             box-sizing: border-box;
-        }
-        .flat-input:focus {
-            border-color: var(--accent-gold);
-            outline: none;
         }
         .btn-gold {
             background: linear-gradient(135deg, #f5c060, #d39325);
@@ -81,12 +66,9 @@
             font-size: 16px;
             border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: all 0.2s ease;
             width: 100%;
             margin-bottom: 12px;
         }
-        .btn-gold:active { transform: scale(0.97); }
         .btn-outline {
             background: transparent;
             color: #ccc;
@@ -97,54 +79,19 @@
             border-radius: 8px;
             cursor: pointer;
             width: 100%;
-            transition: all 0.2s;
         }
-        .btn-outline:hover { color: #fff; border-color: #888; }
 
-        /* 대기방(Lobby) 구조 */
-        #waiting-lobby {
-            background: var(--bg-panel);
-            border-radius: 16px;
-            border: 1px solid #444;
-            padding: 30px;
-            margin-top: 50px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .lobby-title {
-            font-size: 20px;
-            color: var(--accent-gold);
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        .user-list {
-            background: #111;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: left;
-            min-height: 120px;
-        }
-        .user-item {
-            padding: 8px 12px;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        /* 실시간 게임 아레나 */
+        /* 게임 영역 전체 레이아웃 */
         #game-arena {
             display: flex;
             flex-direction: column;
-            width: 96%;
-            max-width: 1100px;
-            margin: 20px auto;
+            width: 98%;
+            max-width: 1200px;
+            margin: 15px auto;
         }
         .room-tag {
             text-align: center;
-            font-size: 16px;
+            font-size: 15px;
             background: var(--bg-panel);
             padding: 10px 20px;
             border-radius: 10px;
@@ -154,94 +101,62 @@
             justify-content: space-between;
             align-items: center;
         }
+
+        /* 3. 레이아웃 순서: 게임판 -> 통 흔드는 곳 -> 스코어판 */
         #board-wrapper {
             display: flex;
-            gap: 25px;
+            gap: 20px;
             width: 100%;
-            flex-wrap: wrap;
+            align-items: flex-start;
         }
 
-        /* 2. 큰 네모 (검은색 테두리 영역) */
+        /* [좌측] 1. 게임판 (큰 네모) */
         #outer-board {
-            flex: 1.3;
+            flex: 1.2;
             background-color: var(--outer-black);
-            border: 4px solid #222;
-            border-radius: 20px;
+            border: 6px solid #222;
+            border-radius: 24px;
             padding: 20px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.7);
-            aspect-ratio: 1 / 1;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             box-sizing: border-box;
-            position: relative;
+            aspect-ratio: 1 / 1;
         }
 
-        /* 테두리(큰 네모 영역) 내에 들어간 5개의 주사위 홈 (검정색 디자인) */
+        /* 검은색 테두리 홈 5개 */
         .dice-slots-container {
             display: flex;
             justify-content: space-between;
-            width: 100%;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 15px;
         }
         .dice-slot {
             flex: 1;
             aspect-ratio: 1/1;
-            background: #000000; /* 검정색 홈 */
-            border-radius: 10px;
-            border: 1.5px dashed #333;
+            background: #000;
+            border-radius: 12px;
+            border: 2px solid #1a1a1a;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: inset 0 3px 8px rgba(0,0,0,0.9);
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.9);
         }
 
         /* 안쪽 작은 네모 (버건디 벨벳 필드) */
         #inner-velvet-field {
             flex: 1;
             background-color: var(--velvet-burgundy);
-            border-radius: 14px;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 16px;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             overflow: hidden;
-            border: 1px solid #4a0d0f;
-            padding: 20px;
+            border: 2px solid #3d0709;
         }
 
-        /* 마우스 드래그 쉐이킹 전용 컵 */
-        #dice-cup {
-            width: 85px;
-            height: 105px;
-            background: linear-gradient(180deg, #422d1b, #201308);
-            border-radius: 12px 12px 30px 30px;
-            border: 2px solid var(--accent-gold);
-            cursor: grab;
-            position: absolute;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
-            user-select: none;
-            touch-action: none;
-        }
-        #dice-cup:active {
-            cursor: grabbing;
-        }
-        .cup-label {
-            font-size: 11px;
-            color: var(--accent-gold);
-            font-weight: bold;
-            pointer-events: none;
-            text-transform: uppercase;
-            text-align: center;
-        }
-
-        /* 주사위 배치 구획 */
         #active-dice-area {
             width: 100%;
             height: 100%;
@@ -249,99 +164,175 @@
             align-items: center;
             justify-content: center;
             gap: 15px;
+            position: relative;
         }
 
-        /* 주사위 디자인 */
-        .dice {
-            width: 54px;
-            height: 54px;
-            background: #ffffff;
-            color: #000;
-            border-radius: 10px;
-            font-size: 34px;
+        /* [중앙] 2. 통이 위치한 곳 (흔들기 존) */
+        #cup-shaker-zone {
+            width: 160px;
+            height: 420px;
+            background: #181818;
+            border: 2px dashed #333;
+            border-radius: 20px;
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 10px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .zone-label {
+            font-size: 12px;
+            color: #777;
+            text-align: center;
+            line-height: 1.4;
+            pointer-events: none;
+        }
+
+        /* 세련된 원통형 가죽 컵 */
+        #dice-cup {
+            width: 90px;
+            height: 120px;
+            background: linear-gradient(135deg, #3a2212 0%, #1c0e05 100%);
+            border-left: 5px solid #28170b;
+            border-right: 5px solid #28170b;
+            border-top: 3px solid var(--accent-gold);
+            border-bottom: 8px solid #100803;
+            border-radius: 40px / 15px; /* 원통 형태의 입체적 곡률 */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 5px 15px rgba(255,255,255,0.05);
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 5px 10px rgba(0,0,0,0.4);
-            cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: absolute;
+            top: 150px;
+            z-index: 50;
+            touch-action: none;
             user-select: none;
+            transition: transform 0.05s linear;
         }
-        .dice.held {
-            border: 3px solid var(--accent-gold);
-            box-shadow: 0 0 12px var(--accent-gold);
+        #dice-cup::after {
+            content: '';
+            position: absolute;
+            bottom: 12px;
+            width: 80%;
+            height: 2px;
+            background: #d4af37;
+            opacity: 0.4;
+        }
+        #dice-cup:active { cursor: grabbing; }
+        .cup-inner-text {
+            color: var(--accent-gold);
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
         }
 
-        /* 3. 하얀 종이 스코어보드 */
+        /* [우측] 3. 스코어판 */
         #scoreboard-section {
-            flex: 1.1;
+            flex: 1.3;
             background: var(--paper-white);
-            color: #2b2b2b;
-            border: 1px solid var(--paper-border);
-            border-radius: 12px;
+            color: #1a1a1a;
+            border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             box-sizing: border-box;
         }
         .paper-title {
-            color: #1a1a1a;
-            font-size: 20px;
+            font-size: 24px;
             font-weight: 900;
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 5px;
-            border-bottom: 2px solid #555;
-            padding-bottom: 10px;
-        }
-        .paper-badge {
-            background: #eaeae3;
-            color: #4f4f48;
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            display: inline-block;
-            margin: 0 auto 15px auto;
-            font-weight: bold;
+            text-align: left;
+            margin: 0 0 15px 0;
+            color: #111;
+            font-family: 'Malgun Gothic', sans-serif;
+            letter-spacing: -1px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
         }
         th, td {
-            border-bottom: 1px solid var(--paper-border);
-            padding: 10px 5px;
+            border: 1px solid #c0c0b8;
+            padding: 8px 5px;
             text-align: center;
             font-size: 13px;
         }
         th {
-            background: #eaeae3;
-            color: #333;
+            background: #e2e2da;
             font-weight: bold;
-            font-size: 12px;
+            color: #333;
+        }
+        .category-label {
+            text-align: left;
+            padding-left: 10px;
+            font-weight: bold;
+            color: #222;
         }
         .score-cell {
             cursor: pointer;
-            background: rgba(0,0,0,0.01);
-            transition: background 0.2s;
-            font-weight: bold;
-            color: #777;
-        }
-        .score-cell:hover {
-            background: rgba(0, 0, 0, 0.05);
+            font-weight: 900;
+            color: #888;
+            background: rgba(0,0,0,0.02);
+            transition: background 0.15s;
         }
         .score-cell.confirmed {
-            color: #2e7d32;
-            font-size: 15px;
+            color: #1a1a1a;
+            background: transparent;
             cursor: default;
         }
-        .score-cell.active-confirm {
-            background: #ffe082 !important;
-            color: #b7791f !important;
-            animation: pulse-border 1s infinite alternate;
+        .score-cell.active-preview {
+            background: #fdf59b !important;
+            color: #d39325 !important;
         }
-        @keyframes pulse-border {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.02); }
+        .gray-row {
+            background: #e9e9e2;
+            font-weight: bold;
+        }
+
+        /* 주사위 개별 물리 애니메이션 */
+        .dice {
+            width: 54px;
+            height: 54px;
+            background: #ffffff;
+            color: #111;
+            border-radius: 12px;
+            font-size: 32px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 -4px 0 #ddd;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: transform 0.1s ease;
+        }
+        .dice.held {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 15px var(--accent-gold), inset 0 -4px 0 #ddd;
+        }
+        
+        /* 5. 구르듯 튀어나오는 애니메이션 */
+        @keyframes dice-spurt {
+            0% {
+                transform: scale(0.2) rotate(0deg) translate(-100px, -100px);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(360deg) translate(20px, -20px);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1) rotate(720deg) translate(0, 0);
+                opacity: 1;
+            }
+        }
+        .dice-rolling {
+            animation: dice-spurt 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
         .roll-counter-display {
@@ -349,68 +340,63 @@
             font-size: 14px;
             font-weight: bold;
             color: #ccc;
-            margin-top: 10px;
+            margin-top: 15px;
         }
-
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <header style="background:#111; width:100%; padding:15px; text-align:center; font-size:24px; font-weight:900; color:var(--accent-gold); border-bottom:1px solid #333;">
+    <header style="background:#0a0a0a; width:100%; padding:15px; text-align:center; font-size:22px; font-weight:900; color:var(--accent-gold); border-bottom:1px solid #222;">
         🎲 YACHT DICE DELUXE
     </header>
 
-    <!-- 1. 메인 홈 화면 -->
+    <!-- 1. 메인 홈 -->
     <div id="main-home">
-        <h1 class="main-title">Yacht Dice</h1>
-        
-        <div id="home-menu" class="menu-box">
+        <h1 class="main-title">요트 다이스</h1>
+        <div id="home-menu">
             <button class="btn-gold" onclick="showInputForm('create')">➕ 방 만들기</button>
-            <button class="btn-outline" onclick="showInputForm('join')">🔑 방 들어가기</button>
+            <button class="btn-outline" style="margin-top:10px;" onclick="showInputForm('join')">🔑 방 들어가기</button>
         </div>
 
-        <div id="create-form" class="menu-box hidden">
+        <div id="create-form" class="hidden">
             <h3 style="margin-top:0;">방 만들기</h3>
-            <input type="text" id="nickname-create" class="flat-input" placeholder="사용할 닉네임 (최대 8자)" maxlength="8">
-            <button class="btn-gold" onclick="createRoom()">방 생성하기</button>
-            <button class="btn-outline" onclick="goBackToMenu()">뒤로가기</button>
+            <input type="text" id="nickname-create" class="flat-input" placeholder="닉네임 (최대 8자)" maxlength="8">
+            <button class="btn-gold" onclick="createRoom()">방 생성</button>
+            <button class="btn-outline" style="margin-top:8px;" onclick="goBackToMenu()">뒤로가기</button>
         </div>
 
-        <div id="join-form" class="menu-box hidden">
+        <div id="join-form" class="hidden">
             <h3 style="margin-top:0;">방 들어가기</h3>
-            <input type="text" id="nickname-join" class="flat-input" placeholder="사용할 닉네임 (최대 8자)" maxlength="8" style="margin-bottom:10px;">
+            <input type="text" id="nickname-join" class="flat-input" placeholder="닉네임" maxlength="8">
             <input type="text" id="room-code-input" class="flat-input" placeholder="방 코드 (4자리)" maxlength="4" style="text-transform:uppercase;">
-            <button class="btn-gold" onclick="joinRoom()">방 입장하기</button>
-            <button class="btn-outline" onclick="goBackToMenu()">뒤로가기</button>
+            <button class="btn-gold" onclick="joinRoom()">입장</button>
+            <button class="btn-outline" style="margin-top:8px;" onclick="goBackToMenu()">뒤로가기</button>
         </div>
     </div>
 
-    <!-- 2. 대기방 화면 (다 들어오면 방장이 시작) -->
+    <!-- 2. 대기실 -->
     <div id="waiting-lobby" class="hidden">
-        <div class="lobby-title">🚪 대기실 입장 완료</div>
-        <div style="font-size: 28px; font-weight: bold; letter-spacing: 2px; color: var(--accent-gold); margin: 15px 0;" id="lobby-code-display">-</div>
-        <p style="font-size:12px; color:#aaa; margin-top:0;">이 코드를 복사해서 다른 사람에게 전달하세요.</p>
-        
-        <div class="user-list" id="lobby-users"></div>
-
-        <div style="display:flex; flex-direction:column; gap:10px;">
-            <button id="start-btn" class="btn-gold hidden" onclick="startGame()">▶️ 게임 시작 (방장전용)</button>
-            <div id="owner-waiting-msg" style="font-size:14px; color:#888;">방장이 게임을 시작할 때까지 대기하고 있습니다...</div>
-        </div>
+        <div class="lobby-title">🚪 대기방</div>
+        <div style="font-size: 32px; font-weight: bold; color: var(--accent-gold); margin: 15px 0;" id="lobby-code-display">-</div>
+        <div class="user-list" id="lobby-users" style="background:#0a0a0a; padding:10px; border-radius:8px; text-align:left; min-height:100px; margin-bottom:20px;"></div>
+        <button id="start-btn" class="btn-gold hidden" onclick="startGame()">▶️ 게임 시작</button>
+        <div id="owner-waiting-msg" style="font-size:13px; color:#888;">방장이 시작하기를 기다리는 중...</div>
     </div>
 
-    <!-- 3. 실제 요트 다이스 인게임 아레나 -->
+    <!-- 3. 인게임 메인 아레나 -->
     <div id="game-arena" class="hidden">
         <div class="room-tag">
-            <span>Room Code: <strong id="room-code-display" style="color:var(--accent-gold);">-</strong></span>
-            <span style="font-size: 13px; color:#aaa;" id="turn-indicator">대기 중...</span>
+            <span>방 코드: <strong id="room-code-display" style="color:var(--accent-gold);">-</strong></span>
+            <span id="turn-indicator" style="font-weight:bold;">대기 중...</span>
         </div>
 
+        <!-- 3. [좌 -> 우 레이아웃 순서 개편] -->
         <div id="board-wrapper">
-            <!-- 큰 네모 (검은색 테두리 판) -->
+            
+            <!-- [왼쪽] 큰 네모 게임판 -->
             <div id="outer-board">
-                <!-- 큰 네모 내부 테두리 영역에 장착된 검정색 주사위 홀드 홈 5개 -->
+                <!-- 상단 검은 홈 5개 -->
                 <div class="dice-slots-container" id="hold-home">
                     <div class="dice-slot" data-index="0"></div>
                     <div class="dice-slot" data-index="1"></div>
@@ -419,40 +405,42 @@
                     <div class="dice-slot" data-index="4"></div>
                 </div>
 
-                <!-- 작은 네모 (버건디 벨벳 굴림 필드) -->
+                <!-- 안쪽 작은 버건디 벨벳 필드 -->
                 <div id="inner-velvet-field">
-                    <!-- 드래그 컵 (턴 소유자에게만 등장) -->
-                    <div id="dice-cup" class="hidden">
-                        <div class="cup-label">드래그해서<br>섞어 던지기</div>
-                    </div>
-                    
-                    <!-- 주사위 필드 내부 배치 -->
                     <div id="active-dice-area"></div>
                 </div>
 
-                <!-- 하단 정보 영역 -->
-                <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <div class="roll-counter-display" id="roll-count-text">남은 횟수: 3/3</div>
-                    <button id="restart-btn" class="btn-outline hidden" style="width:auto; padding:8px 16px; margin:0;" onclick="requestRestart()">🔄 다시 시작</button>
-                </div>
+                <div class="roll-counter-display" id="roll-count-text">남은 횟수: 3/3</div>
+                <button id="restart-btn" class="btn-outline hidden" style="margin-top:10px;" onclick="requestRestart()">🔄 다시 하기</button>
             </div>
 
-            <!-- 📝 리얼 하얀 종이 스코어보드 (우측 패널) -->
-            <div id="scoreboard-section">
-                <h3 class="paper-title">요트 스코어판</h3>
-                <div style="text-align:center;">
-                    <span class="paper-badge">63점 달성 시 보너스 +35점 🎁</span>
-                </div>
+            <!-- [중앙] 원통 컵 흔들기 구획 -->
+            <div id="cup-shaker-zone">
+                <div class="zone-label">▲<br>UP</div>
                 
+                <!-- 원통 가죽 컵 -->
+                <div id="dice-cup" class="hidden">
+                    <div class="cup-inner-text">가죽 컵<br>⇅<br>흔들기</div>
+                </div>
+
+                <div class="zone-label">DOWN<br>▼</div>
+            </div>
+
+            <!-- [오른쪽] 스코어판 (사진의 이모티콘 및 명칭 그대로 구현) -->
+            <div id="scoreboard-section">
+                <h2 class="paper-title">요트다이스</h2>
                 <table id="score-table">
                     <thead>
-                        <tr id="table-header"><th>족보 카테고리</th></tr>
+                        <tr id="table-header">
+                            <th>카테고리</th>
+                        </tr>
                     </thead>
                     <tbody id="score-table-body">
-                        <!-- 점수판 세팅 -->
+                        <!-- JS 렌더링 영역 -->
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
 
@@ -461,29 +449,64 @@
         let currentRoom = null;
         let myId = null;
         let isClientRolling = false;
-        let activeConfirmCategory = null;
+        
+        // 7. 예상 점수 실시간 보관용 변수
+        let selectedCategory = null; 
 
-        // 3. 한글 카테고리 명칭으로 전면 개편 (이모티콘 제거)
+        // Web Audio API를 활용한 실시간 무설치 주사위 달그락 효과음 엔진
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playClatterSound() {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const now = audioCtx.currentTime;
+                // 달그락거리는 고주파 마찰음 합성
+                for (let i = 0; i < 3; i++) {
+                    const timeOffset = i * 0.08;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120 + Math.random() * 80, now + timeOffset);
+                    osc.frequency.exponentialRampToValueAtTime(300 + Math.random() * 200, now + timeOffset + 0.05);
+                    
+                    gain.gain.setValueAtTime(0.15, now + timeOffset);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.06);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + timeOffset);
+                    osc.stop(now + timeOffset + 0.07);
+                }
+            } catch (e) { console.log(e); }
+        }
+
+        // 1. 보내주신 사진 속 명칭, 이모티콘, 배치 순서 엄격 준수
         const categories = [
-            { id: 'aces', name: '에이스' },
-            { id: 'duals', name: '듀스' },
-            { id: 'triples', name: '트리플' },
-            { id: 'quads', name: '쿼드' },
-            { id: 'pentas', name: '펜타' },
-            { id: 'hexas', name: '헥사' },
-            { id: 'choice', name: '초이스' },
-            { id: 'poker', name: '포커' },
-            { id: 'full_house', name: '풀하우스' },
-            { id: 's_straight', name: '스몰 스트레이트' },
-            { id: 'l_straight', name: '라지 스트레이트' },
-            { id: 'yacht', name: '요트' }
+            { id: 'aces', name: '⚀ 에이스' },
+            { id: 'duals', name: '⚁ 듀얼' }, // 듀스 -> 듀얼 수정 완료
+            { id: 'triples', name: '⚂ 트리플' },
+            { id: 'quads', name: '⚃ 쿼드' },
+            { id: 'pentas', name: '⚄ 펜타' },
+            { id: 'hexas', name: '⚅ 헥사' },
+            { id: 'bonus', name: '상단 보너스 +35점', isSpecial: true }, // 보너스 섹션 위치
+            { id: 'choice', name: '초이스' }, // 초이스가 보너스 바로 밑에 위치
+            { id: 'poker', name: '⚀⚀⚀⚀ 포커' },
+            { id: 'full_house', name: '⚀⚀⚁⚁⚁ 풀 하우스' },
+            { id: 's_straight', name: '⚀⚁⚂⚃ 스몰 스트레이트' },
+            { id: 'l_straight', name: '⚀⚁⚂⚃⚄ 라지 스트레이트' },
+            { id: 'yacht', name: '⚄⚄⚄⚄⚄ 요트' },
+            { id: 'total', name: '총점', isSpecial: true }
         ];
 
-        // 컵 드래그 물리 모션 전용 변수
+        // 컵 드래그 & 누적 물리 감도 변수
         let isDraggingCup = false;
-        let startX, startY;
-        let cupX = 0, cupY = 0;
-        let shakePoints = [];
+        let lastY = 0;
+        let totalDragDistance = 0;
+        let lastSoundTime = 0;
 
         function showInputForm(type) {
             document.getElementById("home-menu").classList.add("hidden");
@@ -501,12 +524,12 @@
         }
 
         function createRoom() {
-            const nickname = document.getElementById("nickname-create").value.trim() || `Host_${Math.floor(Math.random()*1000)}`;
+            const nickname = document.getElementById("nickname-create").value.trim() || `Player1`;
             socket.emit('createRoom', { nickname });
         }
 
         function joinRoom() {
-            const nickname = document.getElementById("nickname-join").value.trim() || `Guest_${Math.floor(Math.random()*1000)}`;
+            const nickname = document.getElementById("nickname-join").value.trim() || `Player2`;
             const roomCode = document.getElementById("room-code-input").value.trim().toUpperCase();
             if (!roomCode) return alert("방 코드를 입력하세요.");
             socket.emit('joinRoom', { roomCode, nickname });
@@ -520,20 +543,24 @@
             socket.emit('restartGame', { roomCode: currentRoom.code });
         }
 
-        // 3. 인라인 터치 변경 ("한 번 더 클릭" 한글화)
-        function handleCellClick(category, name, possibleScore, cellElement) {
-            document.querySelectorAll(".score-cell").forEach(el => el.classList.remove("active-confirm"));
+        // 7. 한 번 클릭 시 예상 점수 표시, 두 번 클릭 시 확정
+        function handleCellClick(categoryId, cellElement, possibleScore) {
+            if (isClientRolling) return;
 
-            if (activeConfirmCategory === category) {
+            // 이미 확정된 칸이면 반응 없음
+            if (cellElement.classList.contains("confirmed")) return;
+
+            if (selectedCategory === categoryId) {
+                // 두 번째 클릭: 확정 전송
                 socket.emit('writeScore', {
                     roomCode: currentRoom.code,
-                    category: category
+                    category: categoryId
                 });
-                activeConfirmCategory = null;
+                selectedCategory = null;
             } else {
-                activeConfirmCategory = category;
-                cellElement.classList.add("active-confirm");
-                cellElement.innerText = `${possibleScore} (한 번 더 클릭)`;
+                // 첫 번째 클릭: 예상 점수 노출 및 주황색 불 켜기
+                selectedCategory = categoryId;
+                renderScoreBoard(); // 리렌더링하여 다른 칸을 초기화하고 타겟 칸 활성화
             }
         }
 
@@ -569,8 +596,9 @@
             container.innerHTML = "";
             room.players.forEach((p, idx) => {
                 const item = document.createElement("div");
-                item.className = "user-item";
-                item.innerHTML = `<span>${idx === 0 ? '👑 ' : '👤 '}${p.name} ${p.id === myId ? '(나)' : ''}</span><span style="color:#888;">Ready</span>`;
+                item.style.padding = "8px";
+                item.style.borderBottom = "1px solid #222";
+                item.innerHTML = `<span>${idx === 0 ? '👑 ' : '👤 '}${p.name} ${p.id === myId ? '(나)' : ''}</span>`;
                 container.appendChild(item);
             });
 
@@ -590,34 +618,38 @@
             updateRoomState(room);
         });
 
-        // 1. 드래그 물리 모션 주사위 트리거 적용 및 리롤 정상 차감 반영
+        // 5. 서버로부터 굴림 결과를 받았을 때 롤링 물리 애니메이션 장착
         socket.on('diceRolled', ({ diceValues, remainingRolls, isHeld }) => {
             currentRoom.diceValues = diceValues;
             currentRoom.remainingRolls = remainingRolls;
             currentRoom.isHeld = isHeld;
 
-            const field = document.getElementById("active-dice-area");
-            field.style.opacity = "0.3";
+            // 6. 3차 리롤 종료 시(남은 횟수 0) 자동으로 모든 주사위 킵(Hold)
+            if (remainingRolls === 0) {
+                currentRoom.isHeld = [true, true, true, true, true];
+            }
 
-            // 주사위 떨어질 때 사운드 대용 애니메이션 후 배치 완료
+            isClientRolling = true;
+            renderDice(true); // 애니메이션 굴림 작동 트리거 전달
+
             setTimeout(() => {
-                field.style.opacity = "1";
                 isClientRolling = false;
-                renderDice();
+                renderDice(false);
                 renderScoreBoard();
                 updateCupState();
-            }, 700);
+            }, 750);
         });
 
         socket.on('scoreRegistered', ({ playerId, category, score }) => {
+            selectedCategory = null; // 턴이 넘어갔으므로 선택 초기화
             if (category === 'yacht' && score === 50) {
-                confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             }
         });
 
         socket.on('gameFinished', (room) => {
             updateRoomState(room);
-            alert("경기가 종료되었습니다! 결과를 확인해 보세요.");
+            alert("게임이 종료되었습니다!");
             if (room.players[0].id === myId) {
                 document.getElementById("restart-btn").classList.remove("hidden");
             }
@@ -632,26 +664,30 @@
 
             const turnIndicator = document.getElementById("turn-indicator");
             if (isMyTurn) {
-                turnIndicator.innerHTML = `<span style="color:var(--accent-gold); font-weight:bold;">🟢 당신의 차례입니다! 컵을 흔들어 던지세요!</span>`;
+                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">🟢 당신의 차례! 컵을 위아래로 힘차게 흔드세요!</span>`;
             } else {
-                turnIndicator.innerText = `🔴 ${activePlayer.name}의 차례`;
+                turnIndicator.innerText = `🔴 ${activePlayer.name} 차례`;
             }
 
             document.getElementById("roll-count-text").innerText = `남은 횟수: ${room.remainingRolls}/3`;
+
+            // 6. 세 번째 리롤이 끝난 상태라면 자동 홀드 고정
+            if (room.remainingRolls === 0) {
+                currentRoom.isHeld = [true, true, true, true, true];
+            }
 
             renderDice();
             renderScoreBoard();
             updateCupState();
         }
 
-        // 4. 주사위 컵 쉐이킹 인터페이스 동작 구현
         const cup = document.getElementById("dice-cup");
+        const shakerZone = document.getElementById("cup-shaker-zone");
 
         function updateCupState() {
             if (!currentRoom) return;
             const isMyTurn = currentRoom.players[currentRoom.currentTurnIndex].id === myId;
             
-            // 던질 기회가 있고 내 차례인 경우에만 컵 노출
             if (isMyTurn && currentRoom.remainingRolls > 0 && !isClientRolling) {
                 cup.classList.remove("hidden");
                 resetCupPosition();
@@ -661,13 +697,12 @@
         }
 
         function resetCupPosition() {
-            cupX = 0;
-            cupY = 0;
-            cup.style.transform = `translate(0px, 0px)`;
-            shakePoints = [];
+            cup.style.top = "150px";
+            totalDragDistance = 0;
+            isDraggingCup = false;
         }
 
-        // 마우스 및 터치 드래그 이벤트 리스너 등록
+        // 4. 통 드래그 로직 개선 (정해진 흔들기 존에서 누적 거리 700px 이상 도달 시 격발)
         cup.addEventListener('mousedown', startDrag);
         window.addEventListener('mousemove', dragMove);
         window.addEventListener('mouseup', endDrag);
@@ -679,51 +714,43 @@
         function startDrag(e) {
             if (isClientRolling) return;
             isDraggingCup = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            shakePoints = [];
+            lastY = e.clientY;
+            totalDragDistance = 0;
         }
 
         function dragMove(e) {
             if (!isDraggingCup) return;
-            
-            // 화면 드래그 스크롤 방지
             if (e.preventDefault) e.preventDefault();
 
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
+            const currentY = e.clientY;
+            const deltaY = currentY - lastY;
+            lastY = currentY;
 
-            // 안쪽 버건디 필드 내부에서 일정 한도로만 드래그 가능하게 제한
-            cupX = Math.max(-120, Math.min(120, dx));
-            cupY = Math.max(-120, Math.min(120, dy));
+            // 흔들기 존 영역(높이 420px) 내부에서 컵 이동 제약 조건 설정
+            let newTop = cup.offsetTop + deltaY;
+            if (newTop < 20) newTop = 20;
+            if (newTop > 280) newTop = 280;
+            cup.style.top = newTop + "px";
 
-            cup.style.transform = `translate(${cupX}px, ${cupY}px) rotate(${cupX * 0.1}deg)`;
-            
-            // 드래그 속도와 회전 변화 측정을 위해 좌표 수집
-            shakePoints.push({ x: cupX, y: cupY, time: Date.now() });
+            const travel = Math.abs(deltaY);
+            totalDragDistance += travel;
+
+            // 5. 드래그 이동이 활발히 감지될 때마다 달그락 사운드 격발
+            if (travel > 2 && Date.now() - lastSoundTime > 120) {
+                playClatterSound();
+                lastSoundTime = Date.now();
+                
+                // 가죽컵 쉐이킹 비주얼 트랜스폼 추가
+                cup.style.transform = `rotate(${(Math.random() - 0.5) * 20}deg) scale(1.05)`;
+            }
         }
 
         function endDrag() {
             if (!isDraggingCup) return;
             isDraggingCup = false;
 
-            // 드래그 속도 판별 (충분히 빠르게 통을 섞었는지 체크)
-            let isShakenAction = false;
-            if (shakePoints.length > 3) {
-                const first = shakePoints[0];
-                const last = shakePoints[shakePoints.length - 1];
-                const dist = Math.hypot(last.x - first.x, last.y - first.y);
-                const duration = last.time - first.time;
-                const speed = dist / (duration || 1); // 픽셀/ms
-
-                // 마우스를 빠르게 이동했거나 큰 폭으로 움직였다면 던지기 실행
-                if (speed > 0.4 || dist > 60) {
-                    isShakenAction = true;
-                }
-            }
-
-            if (isShakenAction) {
-                // 주사위 던지기 실행 및 리롤 횟수 차감 호출
+            // 4. 통을 충분히 위아래로 격렬하게 섞었을 때(누적 거리 기준)만 정상 작동
+            if (totalDragDistance > 750) {
                 isClientRolling = true;
                 cup.classList.add("hidden");
                 
@@ -732,13 +759,14 @@
                     clientHeld: currentRoom.isHeld
                 });
             } else {
-                // 살살 드래그하면 원위치
+                // 흔들기가 부족하면 원위치 복귀
                 resetCupPosition();
+                cup.style.transform = "rotate(0deg) scale(1)";
             }
         }
 
-        // 2. 바깥쪽 검은 홈(Slots)과 안쪽 버건디 필드(Active Area) 분리 렌더링
-        function renderDice() {
+        // 2 & 5. 주사위 튀어나오는 역동적 애니메이션 렌더링 포함
+        function renderDice(animate = false) {
             const activeArea = document.getElementById("active-dice-area");
             const slots = document.querySelectorAll(".dice-slot");
             
@@ -752,9 +780,9 @@
 
             if (isTurnJustStarted) {
                 if (isMyTurn) {
-                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.3); font-size:13px; pointer-events:none;">가죽 컵을 위아래로 마구 흔드세요!</span>`;
+                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px; text-align:center;">가죽 컵을 위아래로<br>마구 비벼 섞어보세요!</span>`;
                 } else {
-                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.3); font-size:13px;">상대방이 흔드는 중입니다...</span>`;
+                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px;">상대가 흔드는 중입니다...</span>`;
                 }
                 return;
             }
@@ -763,24 +791,28 @@
             for (let i = 0; i < 5; i++) {
                 const diceDiv = document.createElement("div");
                 diceDiv.className = `dice ${currentRoom.isHeld[i] ? 'held' : ''}`;
+                
+                // 5. 튀어나오는 주사위 회전 애니메이션 클래스 할당
+                if (animate && !currentRoom.isHeld[i]) {
+                    diceDiv.classList.add("dice-rolling");
+                }
+                
                 diceDiv.innerText = getDiceEmoji(currentRoom.diceValues[i]);
 
-                // 턴 전용 클릭 시 홀딩 액션
+                // 6. 3차 리롤이 끝나 락업 상태가 아니며, 내 턴일 때만 홀딩 제어
                 if (isMyTurn && currentRoom.remainingRolls > 0 && !isClientRolling) {
                     diceDiv.onclick = () => {
                         currentRoom.isHeld[i] = !currentRoom.isHeld[i];
-                        renderDice();
+                        renderDice(false);
                     };
                 }
 
                 if (currentRoom.isHeld[i]) {
-                    // 큰 검정 테두리 속 5개 검정색 홀딩 홈에 순서대로 격납
                     if (slots[holdSlotIndex]) {
                         slots[holdSlotIndex].appendChild(diceDiv);
                         holdSlotIndex++;
                     }
                 } else {
-                    // 컵을 거쳐 굴러떨어진 주사위는 버건디 벨벳 필드 안에 노출
                     activeArea.appendChild(diceDiv);
                 }
             }
@@ -791,11 +823,12 @@
             return emojis[num] || num;
         }
 
+        // 7. 실시간 예상 점수 숨기기 시스템 반영한 스코어보드 빌드
         function renderScoreBoard() {
             if (!currentRoom) return;
 
             const headerRow = document.getElementById("table-header");
-            headerRow.innerHTML = "<th>족보 카테고리</th>";
+            headerRow.innerHTML = "<th>카테고리</th>";
 
             currentRoom.players.forEach(p => {
                 const th = document.createElement("th");
@@ -811,8 +844,49 @@
 
             categories.forEach(cat => {
                 const tr = document.createElement("tr");
+
+                // 1. 특수 보너스나 총점 행 처리
+                if (cat.isSpecial) {
+                    tr.className = "gray-row";
+                    const nameTd = document.createElement("td");
+                    nameTd.className = "category-label";
+                    nameTd.innerText = cat.name;
+                    tr.appendChild(nameTd);
+
+                    currentRoom.players.forEach(p => {
+                        const valTd = document.createElement("td");
+                        if (cat.id === 'bonus') {
+                            let sum = 0;
+                            ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
+                                if (p.scores[c] !== undefined) sum += p.scores[c];
+                            });
+                            const bonusAchieved = sum >= 63;
+                            valTd.innerHTML = `${sum}/63 <span style="color:${bonusAchieved?'#2e7d32':'#888'};">${bonusAchieved ? '(+35)' : '(0)'}</span>`;
+                        } else if (cat.id === 'total') {
+                            // 전체 총합 (보너스 포함 계산)
+                            let sum = 0;
+                            let upperSum = 0;
+                            categories.forEach(c => {
+                                if (!c.isSpecial && p.scores[c.id] !== undefined) {
+                                    sum += p.scores[c.id];
+                                }
+                            });
+                            ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
+                                if (p.scores[c] !== undefined) upperSum += p.scores[c];
+                            });
+                            if (upperSum >= 63) sum += 35;
+                            valTd.innerText = sum;
+                        }
+                        tr.appendChild(valTd);
+                    });
+                    tbody.appendChild(tr);
+                    return;
+                }
+
+                // 일반 카테고리 행 출력
                 const nameTd = document.createElement("td");
-                nameTd.innerHTML = `<strong style="color:#222;">${cat.name}</strong>`;
+                nameTd.className = "category-label";
+                nameTd.innerText = cat.name;
                 tr.appendChild(nameTd);
 
                 currentRoom.players.forEach(p => {
@@ -823,16 +897,24 @@
                         scoreTd.innerText = p.scores[cat.id];
                         scoreTd.classList.add("confirmed");
                     } else {
-                        if (p.id === myId && isMyTurn && !isTurnJustStarted && !isClientRolling) {
+                        // 내 차례이며 주사위를 1회 이상 굴렸을 때
+                        if (p.id === myId && isMyTurn && !isTurnJustStarted) {
                             const possible = calculatePossibleScore(cat.id, currentRoom.diceValues);
-                            scoreTd.innerText = `${possible}`;
-                            scoreTd.style.color = "#d39325";
+                            
+                            // 7. 사용자가 해당 셀을 선택(첫 번째 클릭)했을 때만 예상 점수 노출
+                            if (selectedCategory === cat.id) {
+                                scoreTd.innerText = `${possible} (확정하려면 한 번 더 클릭)`;
+                                scoreTd.classList.add("active-preview");
+                            } else {
+                                scoreTd.innerText = "-"; // 기본 상태는 빈 대시(-)
+                            }
+
                             scoreTd.onclick = () => {
-                                handleCellClick(cat.id, cat.name, possible, scoreTd);
+                                handleCellClick(cat.id, scoreTd, possible);
                             };
                         } else {
                             scoreTd.innerText = "-";
-                            scoreTd.style.opacity = "0.4";
+                            scoreTd.style.opacity = "0.3";
                         }
                     }
                     tr.appendChild(scoreTd);
@@ -840,20 +922,9 @@
 
                 tbody.appendChild(tr);
             });
-
-            const bonusTr = document.createElement("tr");
-            bonusTr.innerHTML = "<td><strong style='color:#b71c1c;'>상단 보너스 합계</strong></td>";
-            currentRoom.players.forEach(p => {
-                let sum = 0;
-                ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
-                    if (p.scores[c] !== undefined) sum += p.scores[c];
-                });
-                const achieved = sum >= 63;
-                bonusTr.innerHTML += `<td style="color:${achieved ? '#2e7d32':'#777'}; font-weight:bold;">${sum}/63 ${achieved ? '(+35)' : ''}</td>`;
-            });
-            tbody.appendChild(bonusTr);
         }
 
+        // 족보 점수 계산 알고리즘
         function calculatePossibleScore(category, vals) {
             const counts = {};
             vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
