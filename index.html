@@ -492,8 +492,10 @@
         socket.emit("roll_dice", myRoomCode);
     }
 
-    socket.on("dice_rolled", ({ dice, rollsLeft }) => {
+// 💡 최종 수정된 dice_rolled 이벤트 (이걸로 교체하세요!)
+    socket.on("dice_rolled", ({ dice, keep, rollsLeft }) => { // 1. 여기서 keep을 추가로 받아옵니다.
         currentDice = dice;
+        currentKeep = keep; // 2. 서버가 들고 있는 실제 최신 킵 상태로 동기화합니다.
         localRollsLeft = rollsLeft;
         document.getElementById("roll-count-val").innerText = rollsLeft;
 
@@ -503,6 +505,8 @@
 
         for(let i=0; i<5; i++) {
             const diceElem = document.getElementById(`dice-${i}`);
+            
+            // 이제 동기화된 확실한 currentKeep 정보를 바탕으로 필드 주사위만 굴립니다!
             if(!currentKeep[i]) {
                 diceElem.classList.remove("in-cup"); // 던져지면서 비로소 컵 밖으로 출현!
                 diceElem.setAttribute("data-val", dice[i]);
@@ -531,6 +535,7 @@
         socket.emit("toggle_keep", { roomCode: myRoomCode, index: index });
     }
 
+// 💡 최종 개선된 keep_updated 이벤트 (기존 함수를 이걸로 교체해 주세요!)
     socket.on("keep_updated", (keepState) => {
         currentKeep = keepState;
         for(let i=0; i<5; i++) {
@@ -538,19 +543,27 @@
             const slot = document.querySelector(`.hold-slot[data-idx="${i}"]`);
             
             if(keepState[i]) {
+                // 1) 킵 설정: 홈(Hold Slot)으로 이동
                 slot.appendChild(dice);
                 dice.classList.add("held");
                 dice.classList.remove("in-cup");
+                
+                // 💡 [수정] 강제 좌표를 제거하고 position을 static으로 바꿔 홈 정중앙에 딱 맞게 고정합니다.
+                dice.style.position = "static"; 
+                dice.style.left = "";
+                dice.style.top = "";
                 dice.style.transform = "none";
-                dice.style.left = "0";
-                dice.style.top = "0";
                 slot.classList.add("active");
             } else {
+                // 2) 킵 해제: 필드(Velvet Tray)로 탈출
                 const tray = document.getElementById("velvet-tray");
                 tray.appendChild(dice);
                 dice.classList.remove("held");
                 dice.classList.remove("in-cup");
                 slot.classList.remove("active");
+                
+                // 💡 [수정] 필드에서는 마우스 드래그나 자유 배치가 되도록 position: absolute를 명시해 줍니다.
+                dice.style.position = "absolute";
                 
                 const trayWidth = tray.clientWidth;
                 const trayHeight = tray.clientHeight;
