@@ -45,6 +45,12 @@
             color: var(--accent-gold);
             margin-bottom: 30px;
         }
+        .lobby-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 15px;
+        }
         .flat-input {
             width: 100%;
             padding: 14px;
@@ -231,7 +237,7 @@
             position: absolute;
             top: 150px;
             left: 35px;
-            z-index: 500; /* 자유 드래그 시 다른 엘리먼트 위를 떠돌 수 있도록 높은 z-index */
+            z-index: 500;
             touch-action: none;
             user-select: none;
             transition: transform 0.05s linear;
@@ -337,7 +343,7 @@
             font-weight: bold;
         }
 
-        /* 🎲 CSS 주사위 그래픽 개선 */
+        /* 주사위 디자인 */
         .dice {
             width: 50px;
             height: 50px;
@@ -361,7 +367,6 @@
             box-shadow: 0 0 15px var(--accent-gold), inset 0 -2px 0 #cccccc;
         }
 
-        /* 주사위 눈 디자인 (Dot) */
         .dot {
             display: block;
             background-color: #111111;
@@ -373,7 +378,6 @@
             box-shadow: inset 0 1px 1px rgba(0,0,0,0.5);
         }
 
-        /* 1의 눈 정중앙 크고 빨간색 */
         .dice[data-value="1"] .dot {
             grid-column: 2;
             grid-row: 2;
@@ -383,7 +387,6 @@
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        /* 각 주사위 값에 매칭되는 그리드 제어 클래스 */
         .pos-1 { grid-column: 1; grid-row: 1; }
         .pos-2 { grid-column: 3; grid-row: 1; }
         .pos-3 { grid-column: 1; grid-row: 2; }
@@ -414,7 +417,6 @@
             transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease;
         }
 
-        /* 컵으로 빨려 들어가는 애니메이션 효과 */
         @keyframes dice-to-cup {
             0% {
                 transform: scale(1) rotate(0deg);
@@ -438,6 +440,90 @@
             margin-top: 15px;
         }
         .hidden { display: none !important; }
+
+        /* 최종 결과창 모달 */
+        .result-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .result-modal.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .result-content {
+            background: linear-gradient(135deg, #1e1e24 0%, #121214 100%);
+            border: 2px solid var(--accent-gold);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .result-modal.show .result-content {
+            transform: scale(1);
+        }
+
+        .result-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+        }
+
+        .result-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .result-rank {
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .result-score {
+            font-size: 20px;
+            color: #e0e0e0;
+        }
+
+        .close-result-btn {
+            background: var(--accent-gold);
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .close-result-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        }
 
         @media (max-width: 768px) {
             #board-wrapper {
@@ -489,15 +575,15 @@
 <body>
 
     <header style="background:#0a0a0a; width:100%; padding:15px; text-align:center; font-size:22px; font-weight:900; color:var(--accent-gold); border-bottom:1px solid #222;">
-        🎲 YACHT DICE DELUXE
+        YACHT DICE DELUXE
     </header>
 
     <!-- 1. 메인 홈 -->
     <div id="main-home">
         <h1 class="main-title">요트 다이스</h1>
         <div id="home-menu">
-            <button class="btn-gold" onclick="showInputForm('create')">🏠 방 만들기</button>
-            <button class="btn-outline" style="margin-top:10px;" onclick="showInputForm('join')">🔑 방 들어가기</button>
+            <button class="btn-gold" onclick="showInputForm('create')">방 만들기</button>
+            <button class="btn-outline" style="margin-top:10px;" onclick="showInputForm('join')">방 들어가기</button>
         </div>
 
         <div id="create-form" class="hidden">
@@ -518,10 +604,10 @@
 
     <!-- 2. 대기실 -->
     <div id="waiting-lobby" class="hidden">
-        <div class="lobby-title">🚪 대기방</div>
+        <div class="lobby-title">대기방</div>
         <div style="font-size: 32px; font-weight: bold; color: var(--accent-gold); margin: 15px 0;" id="lobby-code-display">-</div>
         <div class="user-list" id="lobby-users" style="background:#0a0a0a; padding:10px; border-radius:8px; text-align:left; min-height:100px; margin-bottom:20px;"></div>
-        <button id="start-btn" class="btn-gold hidden" onclick="startGame()">▶️ 게임 시작</button>
+        <button id="start-btn" class="btn-gold hidden" onclick="startGame()">게임 시작</button>
         <div id="owner-waiting-msg" style="font-size:13px; color:#888;">방장이 시작하기를 기다리는 중...</div>
     </div>
 
@@ -531,8 +617,8 @@
             <span>방 코드: <strong id="room-code-display" style="color:var(--accent-gold);">-</strong></span>
             
             <div style="display:flex; gap: 5px;">
-                <button id="show-score-btn" class="btn-outline" style="width:auto; padding:5px 12px; font-size:12px; background: #e65100; color:white; border:none;" onclick="openScoreboardMobile()">📊 점수 확인</button>
-                <button id="gyro-init-btn" class="btn-outline" style="width:auto; padding:5px 10px; font-size:11px;" onclick="requestGyroPermission()">📳 흔들기 센서 활성화</button>
+                <button id="show-score-btn" class="btn-outline" style="width:auto; padding:5px 12px; font-size:12px; background: #e65100; color:white; border:none;" onclick="openScoreboardMobile()">점수 확인</button>
+                <button id="gyro-init-btn" class="btn-outline" style="width:auto; padding:5px 10px; font-size:11px;" onclick="requestGyroPermission()">흔들기 센서 활성화</button>
             </div>
             
             <span id="turn-indicator" style="font-weight:bold;">대기 중...</span>
@@ -558,9 +644,9 @@
 
                 <div class="roll-counter-display" id="roll-count-text">남은 횟수: 3/3</div>
                 
-                <!-- 액션 버튼 (리롤 즉시 종료 및 점수입력) -->
-                <button id="confirm-score-btn" class="btn-action" disabled onclick="forceEndRolls()">🛑 리롤 종료하고 점수 입력하기</button>
-                <button id="restart-btn" class="btn-outline hidden" style="margin-top:10px;" onclick="requestRestart()">🔄 다시 하기</button>
+                <!-- 액션 버튼 -->
+                <button id="confirm-score-btn" class="btn-action" disabled onclick="forceEndRolls()">리롤 종료하고 점수 입력하기</button>
+                <button id="restart-btn" class="btn-outline hidden" style="margin-top:10px;" onclick="requestRestart()">다시 하기</button>
             </div>
 
             <!-- [중앙] 원통 컵 흔들기 구획 -->
@@ -569,7 +655,7 @@
                 
                 <!-- 원통 가죽 컵 -->
                 <div id="dice-cup" class="hidden">
-                    <div class="cup-inner-text">가죽 컵<br>🪘<br>흔들기</div>
+                    <div class="cup-inner-text">가죽 컵<br><br>흔들기</div>
                 </div>
 
                 <div class="zone-label">SHAKE IT</div>
@@ -578,7 +664,7 @@
             <!-- [오른쪽/모바일 팝업] 스코어판 -->
             <div id="scoreboard-section">
                 <!-- 모바일 전용 닫기 버튼 -->
-                <button class="close-score-btn" onclick="closeScoreboardMobile()">❌ 닫기 (게임판으로)</button>
+                <button class="close-score-btn" onclick="closeScoreboardMobile()">닫기 (게임판으로)</button>
 
                 <h2 class="paper-title">요트다이스</h2>
                 <table id="score-table">
@@ -596,8 +682,26 @@
         </div>
     </div>
 
+    <!-- 최종 결과 모달 팝업 -->
+    <div id="game-result-modal" class="result-modal">
+        <div class="result-content">
+            <div class="result-title">GAME OVER</div>
+            <div class="result-summary">
+                <div id="my-final-rank" class="result-rank">1등</div>
+                <div id="my-final-score" class="result-score">최종 점수: 0점</div>
+            </div>
+            
+            <!-- 최종 순위표 요약 -->
+            <div id="leaderboard-list" style="margin-bottom: 20px; text-align: left; padding: 0 10px;">
+                <!-- 실시간 동적 렌더링 영역 -->
+            </div>
+
+            <button class="close-result-btn" onclick="closeResultModal()">확인</button>
+        </div>
+    </div>
+
     <script>
-       const socket = io();
+        const socket = io();
         let currentRoom = null;
         let myId = null;
         let isClientRolling = false;
@@ -695,22 +799,21 @@
         }
 
         function startGame() {
+            if (!currentRoom || !currentRoom.code) return;
             socket.emit('startGame', { roomCode: currentRoom.code });
         }
 
         function requestRestart() {
+            if (!currentRoom || !currentRoom.code) return;
             socket.emit('restartGame', { roomCode: currentRoom.code });
         }
 
-        // 족보 클릭 시 "더블 클릭(두 번째 클릭) 즉시 확정" 플로우
         function handleCellClick(categoryId) {
             if (isClientRolling || isDelayedMoving) return;
             
             if (selectedCategory === categoryId) {
-                // 이미 대기/선택 상태인 칸을 다시 누르면 즉시 그 점수로 확정되어 서버 전송[cite: 1]
                 confirmSelectedScore();
             } else {
-                // 최초 1회 클릭 시 대기 상태 전환 및 스코어판 갱신
                 selectedCategory = categoryId;
                 renderScoreBoard(); 
             }
@@ -726,23 +829,18 @@
             closeScoreboardMobile();
         }
 
-        // 🛑 "리롤 종료하고 점수 입력하기" 버튼 연동 로직 보완[cite: 1]
         function forceEndRolls() {
             if (!currentRoom || isClientRolling || isDelayedMoving) return;
             
-            // 1. 모든 주사위를 킵(Hold) 처리[cite: 1]
             currentRoom.isHeld = [true, true, true, true, true];
             isDelayedMoving = true;
             renderDice(false);
             
-            // 2. 서버 측과 상태 동기를 맞추기 위해 서버로 남은 횟수 완전 소진용 "빈 롤링" 혹은 상태 저장 요청 송신
-            // (서버 규칙에 따라 'rollDice' 또는 별도 엔드 턴 이벤트가 처리되도록 호환 구성)
             socket.emit('rollDice', {
                 roomCode: currentRoom.code,
-                clientHeld: [true, true, true, true, true] // 모두 잠갔으므로 서버에서도 남은 횟수가 0으로 차감됩니다
+                clientHeld: [true, true, true, true, true]
             });
 
-            // 3. 킵 영역으로 스무스하게 모여드는 연출 후 즉시 점수판 활성화[cite: 1]
             setTimeout(() => {
                 isDelayedMoving = false;
                 renderDice(false);
@@ -786,7 +884,10 @@
                 const item = document.createElement("div");
                 item.style.padding = "8px";
                 item.style.borderBottom = "1px solid #222";
-                item.innerHTML = `<span>${idx === 0 ? '👑 ' : '👤 '}${p.name} ${p.id === myId ? '(나)' : ''}</span>`;
+                
+                const label = document.createElement("span");
+                label.innerText = `${p.name} ${p.id === myId ? '(나)' : ''}`;
+                item.appendChild(label);
                 container.appendChild(item);
             });
 
@@ -846,12 +947,73 @@
         });
 
         socket.on('gameFinished', (room) => {
+            currentRoom = room;
             updateRoomState(room);
-            alert("게임이 종료되었습니다!");
+
+            const leaderboard = room.players.map(p => {
+                let total = 0;
+                let upperSum = 0;
+                
+                categories.forEach(c => {
+                    if (!c.isSpecial && p.scores[c.id] !== undefined) {
+                        total += p.scores[c.id];
+                    }
+                });
+                
+                ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
+                    if (p.scores[c] !== undefined) upperSum += p.scores[c];
+                });
+                if (upperSum >= 63) total += 35;
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    totalScore: total
+                };
+            });
+
+            leaderboard.sort((a, b) => b.totalScore - a.totalScore);
+
+            const myRankIndex = leaderboard.findIndex(item => item.id === myId);
+            const myTotalScore = myRankIndex !== -1 ? leaderboard[myRankIndex].totalScore : 0;
+            const myRank = myRankIndex + 1;
+
+            document.getElementById("my-final-rank").innerText = `${myRank}등`;
+            document.getElementById("my-final-score").innerText = `최종 점수: ${myTotalScore}점`;
+
+            const listContainer = document.getElementById("leaderboard-list");
+            listContainer.innerHTML = "<h4 style='color:var(--accent-gold); margin-bottom: 10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;'>최종 순위표</h4>";
+            
+            leaderboard.forEach((user, index) => {
+                const isMe = user.id === myId;
+                const userRow = document.createElement("div");
+                userRow.style.display = "flex";
+                userRow.style.justifyContent = "space-between";
+                userRow.style.padding = "6px 0";
+                userRow.style.fontSize = "15px";
+                userRow.style.color = isMe ? "#ffd700" : "#fff";
+                userRow.style.fontWeight = isMe ? "bold" : "normal";
+                userRow.innerHTML = `
+                    <span>${index + 1}위. ${user.name} ${isMe ? '(나)' : ''}</span>
+                    <span>${user.totalScore} 점</span>
+                `;
+                listContainer.appendChild(userRow);
+            });
+
+            document.getElementById("game-result-modal").classList.add("show");
+
+            if (myRank === 1) {
+                confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 } });
+            }
+
             if (room.players[0].id === myId) {
                 document.getElementById("restart-btn").classList.remove("hidden");
             }
         });
+
+        function closeResultModal() {
+            document.getElementById("game-result-modal").classList.remove("show");
+        }
 
         function updateRoomState(room) {
             currentRoom = room;
@@ -862,15 +1024,13 @@
 
             const turnIndicator = document.getElementById("turn-indicator");
             if (isMyTurn) {
-                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">🎲 당신의 차례! 컵을 흔들어 주사위를 굴리세요!</span>`;
+                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">당신의 차례! 컵을 흔들어 주사위를 굴리세요!</span>`;
             } else {
-                turnIndicator.innerText = `👤 ${activePlayer.name} 차례`;
+                turnIndicator.innerText = `${activePlayer.name} 차례`;
             }
 
-            // [남은 횟수 실시간 연동 완성][cite: 1]
             document.getElementById("roll-count-text").innerText = `남은 횟수: ${room.remainingRolls}/3`;
 
-            // 액션 버튼의 제어: 내 턴이고 최소 한 번은 굴려서 횟수가 1, 2회 남은 경우에만 "리롤 즉시 종료" 활성화
             const confirmBtn = document.getElementById("confirm-score-btn");
             if (isMyTurn && room.remainingRolls < 3 && room.remainingRolls > 0) {
                 confirmBtn.removeAttribute("disabled");
@@ -910,7 +1070,6 @@
             totalDragDistance = 0;
             isDraggingCup = false;
 
-            // 드래그 거리가 부족하여 취소된 경우 원래 주사위 상태 복귀 및 숨김 해제[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => {
                 d.classList.remove("dice-gathering");
@@ -924,7 +1083,6 @@
 
         cup.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
         window.addEventListener('touchmove', (e) => {
-            // 모바일 터치 드래그 시 배경 스크롤을 차단해 드래그 조작감 극대화
             if (isDraggingCup && e.cancelable) e.preventDefault();
             dragMove(e.touches[0]);
         }, { passive: false });
@@ -937,12 +1095,11 @@
             lastY = e.clientY;
             totalDragDistance = 0;
 
-            // 주사위 가죽 컵 안으로 빨려 들어가기 시각 효과 클래스 부여[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             if (activeDice.length > 0) {
                 playClatterSound();
                 activeDice.forEach(d => {
-                    d.classList.add("dice-gathering");[cite: 1]
+                    d.classList.add("dice-gathering");
                 });
             }
         }
@@ -962,7 +1119,6 @@
             let newLeft = cup.offsetLeft + deltaX;
             let newTop = cup.offsetTop + deltaY;
 
-            // [잠재적 버그 방지] 화면 바깥 최소/최대 영역 튕김(이탈) 방지 뷰포트 가이드 안전선 추가[cite: 1]
             const maxW = window.innerWidth - cup.clientWidth;
             const maxH = window.innerHeight - cup.clientHeight;
             if (newLeft < 0) newLeft = 0;
@@ -973,7 +1129,6 @@
             cup.style.left = newLeft + "px";
             cup.style.top = newTop + "px";
 
-            // 컵 안에서 흔들리는 동안 필드 위의 원본 주사위 그래픽 완전 숨김[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => d.style.display = "none");
 
@@ -1004,7 +1159,6 @@
             isClientRolling = true;
             cup.classList.add("hidden");
             
-            // 던졌으므로 필드 위 주사위를 보이고 롤링 시작
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => d.style.display = "grid");
 
@@ -1014,7 +1168,6 @@
             });
         }
 
-        // 🎲 주사위 렌더링 함수 (3x3 CSS Grid 방식)[cite: 1]
         function renderDice(animate = false) {
             const activeArea = document.getElementById("active-dice-area");
             const slots = document.querySelectorAll(".dice-slot");
@@ -1036,14 +1189,13 @@
                 return;
             }
 
-            // Grid 좌표 눈 매핑 테이블[cite: 1]
             const dotPositions = {
-                1: [4],                  // 정중앙
-                2: [1, 7],               // 좌상, 우하
-                3: [1, 4, 7],            // 좌상, 중앙, 우하
-                4: [1, 2, 6, 7],         // 좌상, 우상, 좌하, 우하
-                5: [1, 2, 4, 6, 7],      // 좌상, 우상, 중앙, 좌하, 우하
-                6: [1, 2, 3, 5, 6, 7]    // 좌상, 우상, 좌중, 우중, 좌하, 우하
+                1: [4],                  
+                2: [1, 7],               
+                3: [1, 4, 7],            
+                4: [1, 2, 6, 7],         
+                5: [1, 2, 4, 6, 7],      
+                6: [1, 2, 3, 5, 6, 7]    
             };
 
             let holdSlotIndex = 0;
@@ -1052,13 +1204,12 @@
                 
                 const diceDiv = document.createElement("div");
                 diceDiv.className = `dice ${currentRoom.isHeld[i] ? 'held' : ''}`;
-                diceDiv.setAttribute("data-value", diceValue); // CSS Selector를 위한 데이터 밸류 바인딩[cite: 1]
+                diceDiv.setAttribute("data-value", diceValue);
                 
                 if (animate && !currentRoom.isHeld[i]) {
                     diceDiv.classList.add("dice-rolling");
                 }
                 
-                // 눈 생성 후 격자에 맞춰 주입[cite: 1]
                 const positions = dotPositions[diceValue] || [];
                 positions.forEach(pos => {
                     const dotSpan = document.createElement("span");
@@ -1096,7 +1247,7 @@
             currentRoom.players.forEach((p, idx) => {
                 const th = document.createElement("th");
                 const isPlayerTurn = currentRoom.currentTurnIndex === idx;
-                th.innerHTML = `${isPlayerTurn ? '🎲 ' : ''}${p.name}${p.id === myId ? '<br>(나)' : ''}`;
+                th.innerHTML = `${isPlayerTurn ? '' : ''}${p.name}${p.id === myId ? '<br>(나)' : ''}`;
                 headerRow.appendChild(th);
             });
 
@@ -1199,14 +1350,23 @@
                 case 'pentas': return (counts[5] || 0) * 5;
                 case 'hexas': return (counts[6] || 0) * 6;
                 case 'choice': return sumAll;
-                case 'poker': case 'poker': {
+                case 'poker': {
                     for (let val in counts) {
-                        // 동일한 눈이 4개 이상(4개 또는 5개) 나왔을 때
                         if (counts[val] >= 4) {
-                            // 해당 눈의 값(val)에 딱 4를 곱한 점수만 인정 (남은 1개는 버림)
                             return Number(val) * 4;
                         }
                     }
+                    return 0;
+                }
+                case 'full_house': {
+                    let hasThree = false;
+                    let hasTwo = false;
+                    for (let val in counts) {
+                        if (counts[val] === 3) hasThree = true;
+                        if (counts[val] === 2) hasTwo = true;
+                        if (counts[val] === 5) { hasThree = true; hasTwo = true; } 
+                    }
+                    if (hasThree && hasTwo) return sumAll;
                     return 0;
                 }
                 case 's_straight': {
