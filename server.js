@@ -170,7 +170,7 @@ io.on('connection', (socket) => {
     socket.to(roomCode).emit('cup_shaking');
   });
 
-  // 주사위 굴리기 (흔들기를 놓았거나, 자동 섞기 버튼 클릭 시)
+ // 💡 [개선 완료] 주사위 굴리기 (흔들기를 놓았거나, 자동 섞기 버튼 클릭 시)
   socket.on('roll_dice', (roomCode) => {
     const room = rooms[roomCode];
     if (!room || !room.gameState) return;
@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
     const activePlayer = room.gameState.order[room.gameState.turnIndex];
     if (activePlayer.id !== socket.id) return; // 본인 턴이 아니면 굴리기 금지
 
-    // 고정(Keep)되지 않은 주사위만 완전 랜덤(1~6)하게 굴림
+    // 1. 주사위를 새로 굴릴 때, 킵(Keep) 상태가 참(true)인 인덱스는 기존 주사위 눈을 '절대' 변경하지 않습니다.
+    // 오직 킵되지 않은(false) 주사위만 1~6 사이의 새로운 값을 가집니다.
     for (let i = 0; i < 5; i++) {
       if (!room.gameState.keep[i]) {
         room.gameState.dice[i] = Math.floor(Math.random() * 6) + 1;
@@ -187,12 +188,14 @@ io.on('connection', (socket) => {
     }
     room.gameState.rollsLeft--;
 
+    // 2. 클라이언트가 "어떤 주사위가 킵되어 있고, 어떤 주사위가 새로 굴러갔는지" 확실히 알 수 있도록
+    // 주사위 눈(dice) 배열, 남은 횟수(rollsLeft)와 함께 현재의 킵 상태(keep)를 '동시에' 전송합니다.
     io.to(roomCode).emit('dice_rolled', {
       dice: room.gameState.dice,
+      keep: room.gameState.keep,
       rollsLeft: room.gameState.rollsLeft
     });
   });
-
   // 주사위 홀드/해제 (홈에 넣기/빼기)
   socket.on('toggle_keep', (data) => {
     const { roomCode, index } = data;
