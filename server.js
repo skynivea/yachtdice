@@ -7,29 +7,26 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// 최상위 폴더(__dirname) 자체를 정적 파일 폴더로 지정
 app.use(express.static(__dirname));
 
-// 누군가 접속했을 때 최상위에 있는 index.html을 바로 보내줍니다.
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const rooms = {}; 
 
-// 유저가 직접 채우는 순수 족보 12칸 정의 (종료 판정용)
 const pureCategories = [
     'aces','duals','triples','quads','pentas','hexas',
     'choice','poker','full_house','s_straight','l_straight','yacht'
 ];
 
-// 랜덤 프로필 이모티콘 목록
 const profileEmojis = ['🐱', '🐶', '🦊', '🦁', '🐯', '🐼', '🐻', '🐨', '🐰', '🐹', '🐸', '🐵', '🐣', '🦖', '🦄', '🐝'];
 
 function getRandomEmoji() {
     return profileEmojis[Math.floor(Math.random() * profileEmojis.length)];
 }
 
+// 포커 점수 규칙 수정: 4개 이상 동일한 눈값의 전체 누적 합산[cite: 2]
 function calculateScore(category, vals) {
     if (!vals || vals.every(v => v === 0)) return 0;
     const counts = {};
@@ -46,7 +43,9 @@ function calculateScore(category, vals) {
         case 'choice': return sumAll;
         case 'poker': {
             for (let val in counts) {
-                if (counts[val] >= 4) return sumAll;
+                if (counts[val] >= 4) {
+                    return Number(val) * counts[val]; // 4개면 4배, 5개면 5배
+                }
             }
             return 0;
         }
@@ -93,15 +92,13 @@ function nextTurn(roomCode) {
     room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
     const nextUser = room.players[room.currentTurnIndex];
 
-    // 탈주한 플레이어인 경우 자동으로 0점 패스 처리하여 남은 플레이어들의 게임 보장
     if (!nextUser.active) {
         const unrecordedCategory = pureCategories.find(cat => nextUser.scores[cat] === undefined);
         
         if (unrecordedCategory) {
-            nextUser.scores[unrecordedCategory] = 0; // 패스 처리
+            nextUser.scores[unrecordedCategory] = 0; 
         }
 
-        // 탈주자 자동 패스 시에도 순수 족보 12칸 기준으로 종료를 계산해야 함
         const isFinished = room.players.every(p => {
             if (!p.active) return true;
             return pureCategories.every(cat => p.scores[cat] !== undefined);
@@ -129,7 +126,7 @@ function nextTurn(roomCode) {
 
 io.on('connection', (socket) => {
     
-    // 1. 방 만들기 (이모티콘 프로필 추가)
+    // 1. 방 만들기
     socket.on('createRoom', ({ nickname }) => {
         const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         
@@ -157,7 +154,7 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('gameStateUpdate', rooms[roomCode]);
     });
 
-    // 2. 방 참여하기 (정원 1~6인 보장 및 이모티콘 프로필 추가)
+    // 2. 방 참여하기
     socket.on('joinRoom', ({ roomCode, nickname }) => {
         const formattedCode = roomCode.trim().toUpperCase();
         const room = rooms[formattedCode];
@@ -187,12 +184,11 @@ io.on('connection', (socket) => {
         io.to(formattedCode).emit('gameStateUpdate', room);
     });
 
-    // 3. 게임 시작 (★ 다인 플레이 먹통 버그 수정 완화 ★)
+    // 3. 게임 시작
     socket.on('startGame', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room) return;
         
-        // 방장 검증 (첫 번째 플레이어가 아닌 경우 반려)
         if (room.players[0].id !== socket.id) {
             return socket.emit('errorMsg', '방장만 게임을 시작할 수 있습니다.');
         }
@@ -200,7 +196,6 @@ io.on('connection', (socket) => {
         const pCount = room.players.length;
 
         if (pCount === 1) {
-            // 1인 게임: 순서 정하기 없이 바로 플레이
             room.gameStarted = true;
             room.stage = 'play';
             room.currentTurnIndex = 0;
@@ -211,11 +206,9 @@ io.on('connection', (socket) => {
             io.to(roomCode).emit('gameStateUpdate', room);
             io.to(roomCode).emit('gameStarted', room);
         } else {
-            // 2인 이상 게임: 순서 정하기 카드 고르기 진입
             room.gameStarted = true;
             room.stage = 'sequence';
             
-            // 카드 셔플
             const cardArray = [];
             for (let i = 1; i <= pCount; i++) cardArray.push(i);
             for (let i = cardArray.length - 1; i > 0; i--) {
@@ -229,15 +222,12 @@ io.on('connection', (socket) => {
                 chosenBy: null
             }));
 
-            // [핵심 변경 사항] 기존 custom 이벤트 대신 'gameStateUpdate'를 먼저 전송하여 
-            // 모든 유저의 UI 상태를 동기화하고, 그 직후 시작을 알리는 이벤트를 전송합니다.
             io.to(roomCode).emit('gameStateUpdate', room);
-            io.to(roomCode).emit('sequenceStageStarted', room);
-            io.to(roomCode).emit('gameStarted', room); // 클라이언트 구버전 대응을 위해 두 이벤트를 연달아 트리거
+            io.to(roomCode).emit('gameStarted', room); 
         }
     });
 
-    // 4. 순서 카드 고르기 처리 (실시간 썸네일 재배열)
+    // 4. 순서 카드 고르기 처리 (클라이언트 변수명 동기화)
     socket.on('chooseCard', ({ roomCode, cardIndex }) => {
         const room = rooms[roomCode];
         if (!room || room.stage !== 'sequence') return;
@@ -250,15 +240,8 @@ io.on('connection', (socket) => {
         card.chosenBy = socket.id;
         player.sequenceRoll = card.value;
 
-        io.to(roomCode).emit('cardChosen', { 
-            playerId: socket.id, 
-            cardIndex: cardIndex, 
-            value: card.value 
-        });
-
         const allChosen = room.players.every(p => p.sequenceRoll > 0);
         if (allChosen) {
-            // 카드 순서대로 정렬
             room.players.sort((a, b) => a.sequenceRoll - b.sequenceRoll);
             
             room.stage = 'play';
@@ -277,7 +260,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 5. 주사위 굴리기 (동기화)
+    // 5. 주사위 굴리기
     socket.on('rollDice', ({ roomCode, clientHeld }) => {
         const room = rooms[roomCode];
         if (!room || room.stage !== 'play') return;
@@ -301,7 +284,7 @@ io.on('connection', (socket) => {
             diceValues: room.diceValues,
             remainingRolls: room.remainingRolls,
             isHeld: room.isHeld,
-            rollerId: socket.id
+            activePlayerId: socket.id
         });
         
         io.to(roomCode).emit('gameStateUpdate', room);
@@ -388,13 +371,11 @@ io.on('connection', (socket) => {
                 value: val,
                 chosenBy: null
             }));
-
-            io.to(roomCode).emit('sequenceStageStarted', room);
         }
         io.to(roomCode).emit('gameStateUpdate', room);
     });
 
-    // 8. 말풍선 감정표현 이모티콘 중계 (😢, 🤩, 🥰, 👎, 😡)
+    // 8. 감정표현 이모티콘 중계 (수신/송신 이벤트명 단일화)[cite: 2]
     socket.on('sendEmojiBubble', ({ roomCode, emoji }) => {
         const room = rooms[roomCode];
         if (!room) return;
