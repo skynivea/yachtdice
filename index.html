@@ -597,7 +597,7 @@
     </div>
 
     <script>
-        const socket = io();
+       const socket = io();
         let currentRoom = null;
         let myId = null;
         let isClientRolling = false;
@@ -702,15 +702,15 @@
             socket.emit('restartGame', { roomCode: currentRoom.code });
         }
 
-        // 족보 클릭 시 "더블 클릭(두 번째 클릭) 즉시 확정" 플로우 구현[cite: 1]
+        // 족보 클릭 시 "더블 클릭(두 번째 클릭) 즉시 확정" 플로우
         function handleCellClick(categoryId) {
             if (isClientRolling || isDelayedMoving) return;
             
             if (selectedCategory === categoryId) {
-                // 이미 선택되어 있는 상태에서 다시 누르면 즉시 확정 및 서버 전송![cite: 1]
+                // 이미 대기/선택 상태인 칸을 다시 누르면 즉시 그 점수로 확정되어 서버 전송[cite: 1]
                 confirmSelectedScore();
             } else {
-                // 최초 선택: 대기(미리보기) 상태로 돌입
+                // 최초 1회 클릭 시 대기 상태 전환 및 스코어판 갱신
                 selectedCategory = categoryId;
                 renderScoreBoard(); 
             }
@@ -726,19 +726,23 @@
             closeScoreboardMobile();
         }
 
-        // 리롤 즉시 종료 기능: 남은 횟수가 있더라도 강제 킵 홈 이동 및 점수 입력 진입[cite: 1]
+        // 🛑 "리롤 종료하고 점수 입력하기" 버튼 연동 로직 보완[cite: 1]
         function forceEndRolls() {
             if (!currentRoom || isClientRolling || isDelayedMoving) return;
             
-            // 1. 모든 주사위를 강제 Keep 상태로 변경[cite: 1]
+            // 1. 모든 주사위를 킵(Hold) 처리[cite: 1]
             currentRoom.isHeld = [true, true, true, true, true];
-            // 2. 남은 리롤 횟수를 0으로 강제 소진[cite: 1]
-            currentRoom.remainingRolls = 0;
-            
             isDelayedMoving = true;
             renderDice(false);
             
-            // 3. 킵 영역 이동 후 점수 입력 단계 활성화[cite: 1]
+            // 2. 서버 측과 상태 동기를 맞추기 위해 서버로 남은 횟수 완전 소진용 "빈 롤링" 혹은 상태 저장 요청 송신
+            // (서버 규칙에 따라 'rollDice' 또는 별도 엔드 턴 이벤트가 처리되도록 호환 구성)
+            socket.emit('rollDice', {
+                roomCode: currentRoom.code,
+                clientHeld: [true, true, true, true, true] // 모두 잠갔으므로 서버에서도 남은 횟수가 0으로 차감됩니다
+            });
+
+            // 3. 킵 영역으로 스무스하게 모여드는 연출 후 즉시 점수판 활성화[cite: 1]
             setTimeout(() => {
                 isDelayedMoving = false;
                 renderDice(false);
@@ -835,6 +839,7 @@
 
         socket.on('scoreRegistered', ({ playerId, category, score }) => {
             selectedCategory = null; 
+            document.getElementById("confirm-score-btn").setAttribute("disabled", "true");
             if (category === 'yacht' && score === 50) {
                 confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             }
@@ -862,10 +867,10 @@
                 turnIndicator.innerText = `👤 ${activePlayer.name} 차례`;
             }
 
-            // [수정] 서버의 최신 남은 횟수(remainingRolls) 데이터를 실시간 반영해 갱신[cite: 1]
+            // [남은 횟수 실시간 연동 완성][cite: 1]
             document.getElementById("roll-count-text").innerText = `남은 횟수: ${room.remainingRolls}/3`;
 
-            // 리롤 종료 및 점수입력 버튼 활성화 제어 (내 턴이고, 굴릴 수 있는 기회가 0~2번 소진된 상태일 때 활성화)
+            // 액션 버튼의 제어: 내 턴이고 최소 한 번은 굴려서 횟수가 1, 2회 남은 경우에만 "리롤 즉시 종료" 활성화
             const confirmBtn = document.getElementById("confirm-score-btn");
             if (isMyTurn && room.remainingRolls < 3 && room.remainingRolls > 0) {
                 confirmBtn.removeAttribute("disabled");
@@ -905,11 +910,11 @@
             totalDragDistance = 0;
             isDraggingCup = false;
 
-            // [취소 시 복구 연출] 던지는 조건(최소 드래그 거리) 미달 시, 빨려 들어가던 주사위들을 원래대로 복구[cite: 1]
+            // 드래그 거리가 부족하여 취소된 경우 원래 주사위 상태 복귀 및 숨김 해제[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => {
                 d.classList.remove("dice-gathering");
-                d.style.display = "grid"; // 다시 필드 위에 정상 등장
+                d.style.display = "grid";
             });
         }
 
@@ -918,10 +923,13 @@
         window.addEventListener('mouseup', endDrag);
 
         cup.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
-        window.addEventListener('touchmove', (e) => dragMove(e.touches[0]), { passive: false });
+        window.addEventListener('touchmove', (e) => {
+            // 모바일 터치 드래그 시 배경 스크롤을 차단해 드래그 조작감 극대화
+            if (isDraggingCup && e.cancelable) e.preventDefault();
+            dragMove(e.touches[0]);
+        }, { passive: false });
         window.addEventListener('touchend', endDrag);
 
-        // [추가 연출] 컵 드래그 터치 시작 시 필드 주사위를 빨아들이는 시각 효과 발동[cite: 1]
         function startDrag(e) {
             if (isClientRolling || isDelayedMoving) return;
             isDraggingCup = true;
@@ -929,19 +937,18 @@
             lastY = e.clientY;
             totalDragDistance = 0;
 
-            // 벨벳 필드 위에 노출되어 있는 활성 주사위 수집[cite: 1]
+            // 주사위 가죽 컵 안으로 빨려 들어가기 시각 효과 클래스 부여[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             if (activeDice.length > 0) {
-                playClatterSound(); // 주사위 쓸어 담는 사운드
+                playClatterSound();
                 activeDice.forEach(d => {
-                    d.classList.add("dice-gathering"); // 컵 안으로 빨려 들어가는 효과 부여[cite: 1]
+                    d.classList.add("dice-gathering");[cite: 1]
                 });
             }
         }
 
         function dragMove(e) {
             if (!isDraggingCup) return;
-            if (e.preventDefault) e.preventDefault();
 
             const currentX = e.clientX;
             const currentY = e.clientY;
@@ -952,14 +959,21 @@
             lastX = currentX;
             lastY = currentY;
 
-            // [수정] 드래그 제한 영역을 대폭 완화(자유 드래그 지원)하여 어디든 이동 가능[cite: 1]
             let newLeft = cup.offsetLeft + deltaX;
             let newTop = cup.offsetTop + deltaY;
+
+            // [잠재적 버그 방지] 화면 바깥 최소/최대 영역 튕김(이탈) 방지 뷰포트 가이드 안전선 추가[cite: 1]
+            const maxW = window.innerWidth - cup.clientWidth;
+            const maxH = window.innerHeight - cup.clientHeight;
+            if (newLeft < 0) newLeft = 0;
+            if (newLeft > maxW) newLeft = maxW;
+            if (newTop < 0) newTop = 0;
+            if (newTop > maxH) newTop = maxH;
 
             cup.style.left = newLeft + "px";
             cup.style.top = newTop + "px";
 
-            // [컵 안에서 섞임/숨김 연출] 드래그 중에는 주사위가 컵 깊이 들어가 보이지 않음[cite: 1]
+            // 컵 안에서 흔들리는 동안 필드 위의 원본 주사위 그래픽 완전 숨김[cite: 1]
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => d.style.display = "none");
 
@@ -981,7 +995,7 @@
             if (totalDragDistance > 650) {
                 triggerRoll();
             } else {
-                resetCupPosition(); // 거리 부족으로 드래그 취소 시 원래 상태로 복구[cite: 1]
+                resetCupPosition();
             }
         }
 
@@ -990,7 +1004,7 @@
             isClientRolling = true;
             cup.classList.add("hidden");
             
-            // [클릭 해제/Roll 작동 시] 숨겼던 주사위를 다시 나타내며 롤링 애니메이션 시작 준비[cite: 1]
+            // 던졌으므로 필드 위 주사위를 보이고 롤링 시작
             const activeDice = document.querySelectorAll("#active-dice-area .dice");
             activeDice.forEach(d => d.style.display = "grid");
 
@@ -1000,7 +1014,7 @@
             });
         }
 
-        // 🎲 주사위 렌더링 함수 개선 (CSS Grid 및 1의 붉은 눈 완벽 구현)[cite: 1]
+        // 🎲 주사위 렌더링 함수 (3x3 CSS Grid 방식)[cite: 1]
         function renderDice(animate = false) {
             const activeArea = document.getElementById("active-dice-area");
             const slots = document.querySelectorAll(".dice-slot");
@@ -1022,7 +1036,7 @@
                 return;
             }
 
-            // 주사위 눈 배치 매핑 객체 (3x3 격자 좌표값 지정)[cite: 1]
+            // Grid 좌표 눈 매핑 테이블[cite: 1]
             const dotPositions = {
                 1: [4],                  // 정중앙
                 2: [1, 7],               // 좌상, 우하
@@ -1038,13 +1052,13 @@
                 
                 const diceDiv = document.createElement("div");
                 diceDiv.className = `dice ${currentRoom.isHeld[i] ? 'held' : ''}`;
-                diceDiv.setAttribute("data-value", diceValue); // CSS Selector를 위한 데이터 바인딩[cite: 1]
+                diceDiv.setAttribute("data-value", diceValue); // CSS Selector를 위한 데이터 밸류 바인딩[cite: 1]
                 
                 if (animate && !currentRoom.isHeld[i]) {
                     diceDiv.classList.add("dice-rolling");
                 }
                 
-                // 해당 숫자의 눈 구조에 맞추어 격자 엘리먼트(.dot) 생성 및 삽입[cite: 1]
+                // 눈 생성 후 격자에 맞춰 주입[cite: 1]
                 const positions = dotPositions[diceValue] || [];
                 positions.forEach(pos => {
                     const dotSpan = document.createElement("span");
@@ -1185,21 +1199,15 @@
                 case 'pentas': return (counts[5] || 0) * 5;
                 case 'hexas': return (counts[6] || 0) * 6;
                 case 'choice': return sumAll;
-                case 'poker': {
+                case 'poker': case 'poker': {
                     for (let val in counts) {
-                        if (counts[val] >= 4) return sumAll;
+                        // 동일한 눈이 4개 이상(4개 또는 5개) 나왔을 때
+                        if (counts[val] >= 4) {
+                            // 해당 눈의 값(val)에 딱 4를 곱한 점수만 인정 (남은 1개는 버림)
+                            return Number(val) * 4;
+                        }
                     }
                     return 0;
-                }
-                case 'full_house': {
-                    let hasThree = false;
-                    let hasTwo = false;
-                    for (let val in counts) {
-                        if (counts[val] === 3) hasThree = true;
-                        if (counts[val] === 2) hasTwo = true;
-                        if (counts[val] === 5) { hasThree = true; hasTwo = true; }
-                    }
-                    return (hasThree && hasTwo) ? sumAll : 0;
                 }
                 case 's_straight': {
                     const uniqueStr = Array.from(new Set(vals)).sort().join('');
