@@ -7,9 +7,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// 1. 최상위 폴더(__dirname) 자체를 정적 파일 폴더로 지정합니다.
+// (이렇게 하면 최상위 폴더에 있는 CSS, JS, 이미지 파일들을 브라우저가 바로 읽을 수 있습니다.)
+app.use(express.static(__dirname));
+
+// 2. 누군가 접속했을 때 최상위에 있는 index.html을 바로 보내줍니다.
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const rooms = {}; 
