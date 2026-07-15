@@ -57,17 +57,68 @@
         
         .tray-board { width: 420px; height: 500px; background: var(--tray-border); border-radius: 30px; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: inset 0 0 20px rgba(0,0,0,0.9), 0 10px 20px rgba(0,0,0,0.5); border: 2px solid #2e2e38; }
         
-        /* 1. 홀드 홈 (Keeper Slots) */
-        .hold-home { height: 75px; background: #000; border-radius: 15px; display: flex; justify-content: space-around; align-items: center; padding: 0 10px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); }
-        .hold-slot { width: 55px; height: 55px; background: var(--holder-bg); border-radius: 8px; border: 2px dashed #444; display: flex; justify-content: center; align-items: center; transition: 0.2s; cursor: pointer; }
-        .hold-slot.active { border-color: #ff5500; background: #1f1212; }
+        /* 1. 홀드 홈 (Keeper Slots) - 그대로 유지 */
+.hold-home { 
+    height: 75px; 
+    background: #000; 
+    border-radius: 15px; 
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center; 
+    padding: 0 10px; 
+    box-shadow: inset 0 5px 10px rgba(0,0,0,0.8); 
+}
 
-        /* 2. 벨벳 다이스 트레이 */
-        .dice-tray { flex-grow: 1; background: var(--tray-velvet); border-radius: 20px; position: relative; box-shadow: inset 0 10px 30px rgba(0,0,0,0.95); overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        
-        /* 주사위 디자인 */
-        .dice { width: 52px; height: 52px; background: var(--dice-white); border-radius: 10px; box-shadow: 0 5px 10px rgba(0,0,0,0.6), inset 0 -4px 6px rgba(0,0,0,0.3); position: absolute; cursor: pointer; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 5px; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s, top 0.4s, opacity 0.3s; }
-        .dice.held { position: static !important; width: 48px; height: 48px; box-shadow: none; border: 2px solid #ff5500; }
+.hold-slot { 
+    width: 55px; 
+    height: 55px; 
+    background: var(--holder-bg); 
+    border-radius: 8px; 
+    border: 2px dashed #444; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    transition: 0.2s; 
+    cursor: pointer; 
+}
+
+.hold-slot.active { 
+    border-color: #ff5500; 
+    background: #1f1212; 
+}
+
+/* 2. 벨벳 다이스 트레이 - 💡 [수정] flex 정렬을 제거하여 주사위가 자유롭게 배치되도록 함 */
+.dice-tray { 
+    flex-grow: 1; 
+    background: var(--tray-velvet); 
+    border-radius: 20px; 
+    position: relative; /* absolute 주사위의 기준 좌표계 역할 */
+    box-shadow: inset 0 10px 30px rgba(0,0,0,0.95); 
+    overflow: hidden; 
+}
+
+/* 주사위 디자인 - 그대로 유지 (held 상태의 static 변환 완벽합니다) */
+.dice { 
+    width: 52px; 
+    height: 52px; 
+    background: var(--dice-white); 
+    border-radius: 10px; 
+    box-shadow: 0 5px 10px rgba(0,0,0,0.6), inset 0 -4px 6px rgba(0,0,0,0.3); 
+    position: absolute; 
+    cursor: pointer; 
+    display: grid; 
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr); 
+    padding: 5px; 
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), left 0.4s, top 0.4s, opacity 0.3s; 
+}
+
+.dice.held { 
+    position: static !important; /* 홈에 들어가면 flex 중앙정렬을 타도록 absolute 해제 */
+    width: 48px; 
+    height: 48px; 
+    box-shadow: none; 
+    border: 2px solid #ff5500; 
+}
         
         /* 💡 컵에 숨겨졌을 때 상태 (완전 비활성화 및 안 보이게 숨김 처리) */
         .dice.in-cup { opacity: 0; transform: scale(0.1) rotate(180deg) !important; pointer-events: none; } 
