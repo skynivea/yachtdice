@@ -28,28 +28,29 @@
             touch-action: manipulation;
         }
         
-        #main-home, #waiting-lobby {
+        #main-home, #waiting-lobby, #card-draw-stage {
             background: var(--bg-panel);
             border-radius: 16px;
             border: 1px solid #333;
             padding: 30px;
-            margin-top: 50px;
+            margin-top: 40px;
             max-width: 450px;
             width: 90%;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-sizing: border-box;
         }
         .main-title {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 900;
             color: var(--accent-gold);
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
         .lobby-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             color: #fff;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .flat-input {
             width: 100%;
@@ -110,21 +111,138 @@
             box-shadow: none;
         }
 
+        /* 썸네일 리스트 스타일 */
+        .profile-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .profile-card {
+            position: relative;
+            background: #252528;
+            border: 2px solid #3e3e42;
+            border-radius: 12px;
+            width: 75px;
+            padding: 10px 5px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: border-color 0.3s;
+        }
+        .profile-card.active-turn {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 12px var(--accent-gold);
+        }
+        .profile-avatar {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        .profile-name {
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #ddd;
+        }
+        .profile-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: var(--accent-gold);
+            color: #000;
+            font-size: 8px;
+            padding: 2px 5px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        /* 실시간 이모티콘 리액션 말풍선 */
+        .reaction-bubble {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: black;
+            border-radius: 20px;
+            padding: 5px 10px;
+            font-size: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 10;
+            white-space: nowrap;
+            animation: bounceBubble 0.3s ease-out;
+        }
+        .reaction-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px 5px 0;
+            border-style: solid;
+            border-color: white transparent;
+            display: block;
+            width: 0;
+        }
+        @keyframes bounceBubble {
+            0% { transform: translateX(-50%) scale(0); }
+            70% { transform: translateX(-50%) scale(1.2); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+
+        /* 순서 카드 뽑기 스타일 */
+        .card-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 25px 0;
+        }
+        .draw-card {
+            width: 65px;
+            height: 95px;
+            background: linear-gradient(135deg, #444, #222);
+            border: 2px solid #555;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #777;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s, background 0.3s, border-color 0.3s;
+        }
+        .draw-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-gold);
+        }
+        .draw-card.flipped {
+            background: var(--paper-white);
+            color: #111;
+            border-color: var(--accent-gold);
+            cursor: default;
+            transform: rotateY(180deg);
+        }
+
         #game-arena {
             display: flex;
             flex-direction: column;
             width: 98%;
             max-width: 1200px;
-            margin: 15px auto;
+            margin: 10px auto;
         }
         .room-tag {
             text-align: center;
             font-size: 14px;
             background: var(--bg-panel);
-            padding: 10px 20px;
+            padding: 8px 16px;
             border-radius: 10px;
             border: 1px solid #333;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -134,7 +252,7 @@
 
         #board-wrapper {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             width: 100%;
             align-items: flex-start;
         }
@@ -196,7 +314,7 @@
 
         /* [중앙] 흔들기 구역 */
         #cup-shaker-zone {
-            width: 160px;
+            width: 140px;
             height: 420px;
             background: #181818;
             border: 2px dashed #333;
@@ -236,7 +354,7 @@
             justify-content: center;
             position: absolute;
             top: 150px;
-            left: 35px;
+            left: 25px;
             z-index: 500;
             touch-action: none;
             user-select: none;
@@ -259,6 +377,28 @@
             text-align: center;
             pointer-events: none;
             text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        /* 이모티콘 감정 표현 리액션 창 */
+        .reaction-panel {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 30px;
+            margin-top: 10px;
+            border: 1px solid #333;
+        }
+        .reaction-btn {
+            background: transparent;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .reaction-btn:hover {
+            transform: scale(1.3);
         }
 
         /* [우측] 스코어판 */
@@ -596,22 +736,34 @@
         <div id="join-form" class="hidden">
             <h3 style="margin-top:0;">방 들어가기</h3>
             <input type="text" id="nickname-join" class="flat-input" placeholder="닉네임" maxlength="8">
-            <input type="text" id="room-code-input" class="flat-input" placeholder="방 코드 (4자리)" maxlength="4" style="text-transform:uppercase;">
+            <input type="text" id="room-code-input" class="flat-input" placeholder="방 코드 (6자리)" maxlength="6" style="text-transform:uppercase;">
             <button class="btn-gold" onclick="joinRoom()">입장</button>
             <button class="btn-outline" style="margin-top:8px;" onclick="goBackToMenu()">뒤로가기</button>
         </div>
     </div>
 
-    <!-- 2. 대기실 -->
+    <!-- 2. 대기실 (프로필 썸네일 노출 추가) -->
     <div id="waiting-lobby" class="hidden">
         <div class="lobby-title">대기방</div>
-        <div style="font-size: 32px; font-weight: bold; color: var(--accent-gold); margin: 15px 0;" id="lobby-code-display">-</div>
-        <div class="user-list" id="lobby-users" style="background:#0a0a0a; padding:10px; border-radius:8px; text-align:left; min-height:100px; margin-bottom:20px;"></div>
+        <div style="font-size: 28px; font-weight: bold; color: var(--accent-gold); margin: 10px 0;" id="lobby-code-display">-</div>
+        
+        <!-- 프로필 카드 리스트가 생성될 곳 -->
+        <div id="lobby-profiles" class="profile-container"></div>
+        
         <button id="start-btn" class="btn-gold hidden" onclick="startGame()">게임 시작</button>
         <div id="owner-waiting-msg" style="font-size:13px; color:#888;">방장이 시작하기를 기다리는 중...</div>
     </div>
 
-    <!-- 3. 인게임 메인 아레나 -->
+    <!-- 3. 순서 카드 뽑기 스테이지 (추가) -->
+    <div id="card-draw-stage" class="hidden">
+        <div class="lobby-title" style="color:var(--accent-gold)">순서 카드 뽑기</div>
+        <p style="font-size:13px; color:#ccc; margin-bottom:15px;">카드를 클릭해 선 턴을 정하는 운명의 뽑기를 진행하세요!</p>
+        
+        <div class="profile-container" id="card-draw-profiles"></div>
+        <div class="card-grid" id="card-grid-container"></div>
+    </div>
+
+    <!-- 4. 인게임 메인 아레나 -->
     <div id="game-arena" class="hidden">
         <div class="room-tag">
             <span>방 코드: <strong id="room-code-display" style="color:var(--accent-gold);">-</strong></span>
@@ -623,6 +775,9 @@
             
             <span id="turn-indicator" style="font-weight:bold;">대기 중...</span>
         </div>
+
+        <!-- 게임 상단: 프로필 썸네일 배열 -->
+        <div id="game-profiles" class="profile-container" style="margin: 0 0 10px 0;"></div>
 
         <div id="board-wrapper">
             
@@ -647,6 +802,15 @@
                 <!-- 액션 버튼 -->
                 <button id="confirm-score-btn" class="btn-action" disabled onclick="forceEndRolls()">리롤 종료하고 점수 입력하기</button>
                 <button id="restart-btn" class="btn-outline hidden" style="margin-top:10px;" onclick="requestRestart()">다시 하기</button>
+                
+                <!-- 감정 표현 이모티콘 퀵바 (추가) -->
+                <div class="reaction-panel">
+                    <button class="reaction-btn" onclick="sendReaction('😒')">😒</button>
+                    <button class="reaction-btn" onclick="sendReaction('❤️')">❤️</button>
+                    <button class="reaction-btn" onclick="sendReaction('🔥')">🔥</button>
+                    <button class="reaction-btn" onclick="sendReaction('🎵')">🎵</button>
+                    <button class="reaction-btn" onclick="sendReaction('🌀')">🌀</button>
+                </div>
             </div>
 
             <!-- [중앙] 원통 컵 흔들기 구획 -->
@@ -850,6 +1014,17 @@
             }, 800);
         }
 
+        // 이모티콘 보내기 전송 함수
+        function sendReaction(emoji) {
+            if (!currentRoom) return;
+            socket.emit('sendReaction', { roomCode: currentRoom.code, reaction: emoji });
+        }
+
+        // 서버 오류 알림 수신
+        socket.on('errorMsg', (msg) => {
+            alert(msg);
+        });
+
         socket.on('roomCreated', ({ roomCode }) => {
             myId = socket.id;
             transitionToLobby(roomCode);
@@ -866,29 +1041,74 @@
             document.getElementById("lobby-code-display").innerText = roomCode;
         }
 
+        // 실시간 이모티콘 리액션 노출 처리
+        socket.on('receiveReaction', ({ senderId, reaction }) => {
+            const card = document.querySelector(`.profile-card[data-player-id="${senderId}"]`);
+            if (card) {
+                // 기존 말풍선 제거
+                const oldBubble = card.querySelector('.reaction-bubble');
+                if (oldBubble) oldBubble.remove();
+
+                const bubble = document.createElement('div');
+                bubble.className = 'reaction-bubble';
+                bubble.innerText = reaction;
+                card.appendChild(bubble);
+
+                // 3초 후 말풍선 사라짐
+                setTimeout(() => {
+                    bubble.remove();
+                }, 3000);
+            }
+        });
+
         socket.on('gameStateUpdate', (room) => {
             currentRoom = room;
+            
             if (room.stage === 'lobby') {
-                updateLobbyUsers(room);
+                document.getElementById("waiting-lobby").classList.remove("hidden");
+                document.getElementById("card-draw-stage").classList.add("hidden");
+                document.getElementById("game-arena").classList.add("hidden");
+                updateLobbyProfiles(room);
                 return;
             }
+            
+            if (room.stage === 'card_draw') {
+                document.getElementById("waiting-lobby").classList.add("hidden");
+                document.getElementById("card-draw-stage").classList.remove("hidden");
+                document.getElementById("game-arena").classList.add("hidden");
+                updateCardDrawStage(room);
+                return;
+            }
+
+            // 본 게임중인 상태
             document.getElementById("waiting-lobby").classList.add("hidden");
+            document.getElementById("card-draw-stage").classList.add("hidden");
             document.getElementById("game-arena").classList.remove("hidden");
             updateRoomState(room);
         });
 
-        function updateLobbyUsers(room) {
-            const container = document.getElementById("lobby-users");
+        // 대기실의 프로필 리스트 렌더링
+        function updateLobbyProfiles(room) {
+            const container = document.getElementById("lobby-profiles");
             container.innerHTML = "";
+            
             room.players.forEach((p, idx) => {
-                const item = document.createElement("div");
-                item.style.padding = "8px";
-                item.style.borderBottom = "1px solid #222";
+                const card = document.createElement("div");
+                card.className = "profile-card";
+                card.setAttribute("data-player-id", p.id);
                 
-                const label = document.createElement("span");
-                label.innerText = `${p.name} ${p.id === myId ? '(나)' : ''}`;
-                item.appendChild(label);
-                container.appendChild(item);
+                if (idx === 0) {
+                    const badge = document.createElement("span");
+                    badge.className = "profile-badge";
+                    badge.innerText = "방장";
+                    card.appendChild(badge);
+                }
+
+                card.innerHTML += `
+                    <div class="profile-avatar">${p.emoji}</div>
+                    <div class="profile-name">${p.name} ${p.id === myId ? '(나)' : ''}</div>
+                `;
+                container.appendChild(card);
             });
 
             const isOwner = room.players[0].id === myId;
@@ -901,17 +1121,62 @@
             }
         }
 
+        // 순서 뽑기 스테이지 화면 드로잉
+        function updateCardDrawStage(room) {
+            // 프로필 목록 동기화
+            const profileContainer = document.getElementById("card-draw-profiles");
+            profileContainer.innerHTML = "";
+            room.players.forEach(p => {
+                const card = document.createElement("div");
+                card.className = "profile-card";
+                card.setAttribute("data-player-id", p.id);
+                card.innerHTML = `
+                    <div class="profile-avatar">${p.emoji}</div>
+                    <div class="profile-name" style="font-size:10px;">${p.name} ${p.drawOrder ? `(${p.drawOrder}번 픽)` : '(뽑는 중)'}</div>
+                `;
+                profileContainer.appendChild(card);
+            });
+
+            // 카드 그리드 동기화
+            const cardGrid = document.getElementById("card-grid-container");
+            cardGrid.innerHTML = "";
+
+            const myPlayer = room.players.find(p => p.id === myId);
+            const hasIMePicked = myPlayer && myPlayer.drawOrder !== null;
+
+            room.cards.forEach(cardData => {
+                const card = document.createElement("div");
+                card.className = "draw-card";
+                
+                if (cardData.pickedBy !== null) {
+                    card.classList.add("flipped");
+                    card.innerText = cardData.number;
+                } else {
+                    card.innerText = "?";
+                    // 내가 아직 안뽑았고 카드도 임자 없는 경우에만 클릭 가능
+                    if (!hasIMePicked) {
+                        card.onclick = () => {
+                            socket.emit('pickCard', { roomCode: room.code, cardId: cardData.id });
+                        };
+                    }
+                }
+                cardGrid.appendChild(card);
+            });
+        }
+
         socket.on('gameStarted', (room) => {
             document.getElementById("waiting-lobby").classList.add("hidden");
+            document.getElementById("card-draw-stage").classList.add("hidden");
             document.getElementById("game-arena").classList.remove("hidden");
             updateRoomState(room);
         });
 
-        socket.on('diceRolled', ({ diceValues, remainingRolls, isHeld }) => {
+        socket.on('diceRolled', ({ diceValues, remainingRolls, isHeld, activePlayerId }) => {
             currentRoom.diceValues = diceValues;
             currentRoom.remainingRolls = remainingRolls;
             currentRoom.isHeld = isHeld;
 
+            // 내가 굴렸든, 남이 굴렸든 모든 관전자 화면에서 다이스가 굴러가는 애니메이션 연출
             isClientRolling = true;
             renderDice(true);
 
@@ -928,7 +1193,9 @@
                         renderDice(false);
                         renderScoreBoard();
                         updateCupState();
-                        openScoreboardMobile();
+                        if (activePlayerId === myId) {
+                            openScoreboardMobile();
+                        }
                     }, 1200);
                 } else {
                     renderDice(false);
@@ -1015,6 +1282,29 @@
             document.getElementById("game-result-modal").classList.remove("show");
         }
 
+        // 인게임 상단 플레이어 프로필 목록 업데이트
+        function updateGameProfiles(room) {
+            const container = document.getElementById("game-profiles");
+            container.innerHTML = "";
+
+            room.players.forEach((p, idx) => {
+                const card = document.createElement("div");
+                card.className = "profile-card";
+                card.setAttribute("data-player-id", p.id);
+
+                // 현재 턴인 사람 하이라이트
+                if (room.currentTurnIndex === idx) {
+                    card.classList.add("active-turn");
+                }
+
+                card.innerHTML = `
+                    <div class="profile-avatar">${p.emoji}</div>
+                    <div class="profile-name">${p.name} ${p.id === myId ? '(나)' : ''}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
         function updateRoomState(room) {
             currentRoom = room;
             document.getElementById("room-code-display").innerText = room.code;
@@ -1024,9 +1314,9 @@
 
             const turnIndicator = document.getElementById("turn-indicator");
             if (isMyTurn) {
-                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">당신의 차례! 컵을 흔들어 주사위를 굴리세요!</span>`;
+                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">당신의 차례! 컵을 흔들어 굴려주세요!</span>`;
             } else {
-                turnIndicator.innerText = `${activePlayer.name} 차례`;
+                turnIndicator.innerText = `${activePlayer.name}의 차례입니다`;
             }
 
             document.getElementById("roll-count-text").innerText = `남은 횟수: ${room.remainingRolls}/3`;
@@ -1038,6 +1328,7 @@
                 confirmBtn.setAttribute("disabled", "true");
             }
 
+            updateGameProfiles(room);
             renderDice();
             renderScoreBoard();
             updateCupState();
@@ -1061,7 +1352,7 @@
         function resetCupPosition() {
             if (window.innerWidth > 768) {
                 cup.style.top = "150px";
-                cup.style.left = "35px";
+                cup.style.left = "25px";
             } else {
                 cup.style.top = "10px";
                 cup.style.left = "calc(50% - 45px)";
@@ -1177,14 +1468,15 @@
 
             if (!currentRoom) return;
 
-            const isMyTurn = currentRoom.players[currentRoom.currentTurnIndex].id === myId;
+            const activePlayer = currentRoom.players[currentRoom.currentTurnIndex];
+            const isMyTurn = activePlayer.id === myId;
             const isTurnJustStarted = currentRoom.diceValues.every(v => v === 0);
 
             if (isTurnJustStarted) {
                 if (isMyTurn) {
                     activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px; text-align:center;">가죽 컵을 사방으로 흔들거나<br>폰을 세게 쥐고 흔드세요!</span>`;
                 } else {
-                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px;">상대가 고민하는 중입니다...</span>`;
+                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px; text-align:center;">${activePlayer.name} 님이<br>컵을 만지작거리는 중...</span>`;
                 }
                 return;
             }
@@ -1217,6 +1509,7 @@
                     diceDiv.appendChild(dotSpan);
                 });
 
+                // 내 턴일 때만 주사위 고정(Hold) 토글 작동
                 if (isMyTurn && currentRoom.remainingRolls > 0 && !isClientRolling && !isDelayedMoving) {
                     diceDiv.onclick = () => {
                         currentRoom.isHeld[i] = !currentRoom.isHeld[i];
@@ -1247,7 +1540,7 @@
             currentRoom.players.forEach((p, idx) => {
                 const th = document.createElement("th");
                 const isPlayerTurn = currentRoom.currentTurnIndex === idx;
-                th.innerHTML = `${isPlayerTurn ? '' : ''}${p.name}${p.id === myId ? '<br>(나)' : ''}`;
+                th.innerHTML = `${isPlayerTurn ? '▶ ' : ''}${p.name}${p.id === myId ? '<br>(나)' : ''}`;
                 headerRow.appendChild(th);
             });
 
@@ -1315,7 +1608,7 @@
                             const possible = calculatePossibleScore(cat.id, currentRoom.diceValues);
                             
                             if (selectedCategory === cat.id) {
-                                scoreTd.innerText = `${possible} (클릭시 확정)`;
+                                scoreTd.innerText = `${possible} (선택됨)`;
                                 scoreTd.classList.add("active-preview");
                             } else {
                                 scoreTd.innerText = `${possible}`;
