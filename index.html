@@ -367,7 +367,7 @@
     });
 
     // 🎲 흔들기 마우스 피지컬 엔진 (진짜 컵 안으로 빨려 들어가 숨는 연출 구현)
-    function startShakeDrag(e) {
+  function startShakeDrag(e) {
         if(!isMyTurn || localRollsLeft <= 0) return;
         isDraggingCup = true;
         totalShakeDistance = 0;
@@ -387,14 +387,14 @@
 
     function hideUnkeptDiceInCup() {
         const tray = document.getElementById("velvet-tray");
-        const cup = document.getElementById("main-leather-cup");
+        const cup = document.getElementById("main-leather-cup"); // 무광 블랙 컵
         const cupRect = cup.getBoundingClientRect();
         const trayRect = tray.getBoundingClientRect();
 
         for(let i=0; i<5; i++) {
             const dice = document.getElementById(`dice-${i}`);
             if(!currentKeep[i]) {
-                dice.classList.add("in-cup"); // 주사위 투명/축소 처리
+                dice.classList.add("in-cup"); // CSS 무광 블랙 스펙 적용: 투명 및 축소 처리로 화면에서 감춤
                 const relativeX = cupRect.left - trayRect.left + 40;
                 const relativeY = cupRect.top - trayRect.top + 60;
                 dice.style.left = `${relativeX}px`;
@@ -504,7 +504,7 @@
         for(let i=0; i<5; i++) {
             const diceElem = document.getElementById(`dice-${i}`);
             if(!currentKeep[i]) {
-                diceElem.classList.remove("in-cup"); // 던져지면서 컵 밖으로 출현!
+                diceElem.classList.remove("in-cup"); // 던져지면서 비로소 컵 밖으로 출현!
                 diceElem.setAttribute("data-val", dice[i]);
 
                 const randX = Math.floor(Math.random() * (trayWidth - 120)) + 30;
@@ -633,6 +633,11 @@
         currentKeep = keep;
         localRollsLeft = rollsLeft;
         document.getElementById("roll-count-val").innerText = rollsLeft;
+        
+        // 싱크 동기화가 이루어질 때도 던질 기회가 남은 주사위들은 컵 속에 즉시 대기 격리
+        if (isMyTurn && localRollsLeft > 0) {
+            hideUnkeptDiceInCup();
+        }
     });
 
     socket.on("score_recorded", ({ playerName, category, score, scoreboard, triggerEffect }) => {
@@ -657,7 +662,10 @@
             return { id: card.getAttribute("data-sid"), name: card.getAttribute("data-pname") };
         });
         updateProfileCards(order, turnIndex);
-        setDicePositionsRandomly();
+
+        // 💡 [수정] 턴이 바뀌었을 때 트레이에 주사위를 뿌려버리던 기존 함수 제거
+        // 새로운 턴이 되었을 때, 던지기 전이므로 킵하지 않은 주사위들은 컵 속으로 숨겨져야 합니다.
+        hideUnkeptDiceInCup();
     });
 
     let inactiveTimer = null;
