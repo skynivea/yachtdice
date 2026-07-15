@@ -110,137 +110,7 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-/* 이모티콘 바 정렬 (가운데 밑) */
-.emoji-bar-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 15px;
-    margin-bottom: 10px;
-}
 
-.emoji-bar {
-    display: flex;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 8px 16px;
-    border-radius: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #eaeaea;
-}
-
-.emoji-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    transition: transform 0.2s, filter 0.2s;
-}
-
-.emoji-btn:hover {
-    transform: scale(1.3);
-    filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.2));
-}
-
-.emoji-btn:active {
-    transform: scale(0.95);
-}
-
-/* 프로필 카드는 반드시 relative 상태여야 말풍선 위치가 고정됩니다 */
-.player-card, .profile-slot, .player-thumbnail { 
-    position: relative; 
-}
-
-/* 말풍선 이모티콘 애니메이션 스타일 */
-.emoji-bubble {
-    position: absolute;
-    top: -45px;  /* 프로필 아이콘 머리 위에 배치 */
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    border: 2px solid #ddd;
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
-    z-index: 999;
-    animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    transition: opacity 0.4s ease, transform 0.4s ease;
-    pointer-events: none; /* 클릭 방해 금지 */
-}
-/* 이모티콘 바 정렬 (가운데 밑) */
-.emoji-bar-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 15px;
-    margin-bottom: 10px;
-}
-
-.emoji-bar {
-    display: flex;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 8px 16px;
-    border-radius: 30px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    border: 1px solid #eaeaea;
-}
-
-.emoji-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    transition: transform 0.2s, filter 0.2s;
-}
-
-.emoji-btn:hover {
-    transform: scale(1.3);
-    filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.2));
-}
-
-.emoji-btn:active {
-    transform: scale(0.95);
-}
-
-/* 프로필 카드는 반드시 relative 상태여야 말풍선 위치가 고정됩니다 */
-.player-card, .profile-slot, .player-thumbnail { 
-    position: relative; 
-}
-
-/* 말풍선 이모티콘 애니메이션 스타일 */
-.emoji-bubble {
-    position: absolute;
-    top: -45px;  /* 프로필 아이콘 머리 위에 배치 */
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    border: 2px solid #ddd;
-    border-radius: 50%;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
-    z-index: 999;
-    animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    transition: opacity 0.4s ease, transform 0.4s ease;
-    pointer-events: none; /* 클릭 방해 금지 */
-}
-
-@keyframes bubblePop {
-    0% { transform: translateX(-50%) scale(0); opacity: 0; }
-    100% { transform: translateX(-50%) scale(1); opacity: 1; }
-}
-@keyframes bubblePop {
-    0% { transform: translateX(-50%) scale(0); opacity: 0; }
-    100% { transform: translateX(-50%) scale(1); opacity: 1; }
-}
         /* 썸네일 리스트 스타일 */
         .profile-container {
             display: flex;
@@ -892,16 +762,7 @@
         <div class="profile-container" id="card-draw-profiles"></div>
         <div class="card-grid" id="card-grid-container"></div>
     </div>
-<!-- 주사위 컵 / 굴리기 영역 근처 적절한 곳에 삽입 -->
-<div class="emoji-bar-container">
-    <div class="emoji-bar">
-        <button type="button" class="emoji-btn" onclick="sendEmoji('😢')">😢</button>
-        <button type="button" class="emoji-btn" onclick="sendEmoji('🤩')">🤩</button>
-        <button type="button" class="emoji-btn" onclick="sendEmoji('🥰')">🥰</button>
-        <button type="button" class="emoji-btn" onclick="sendEmoji('👎')">👎</button>
-        <button type="button" class="emoji-btn" onclick="sendEmoji('😡')">😡</button>
-    </div>
-</div>
+
     <!-- 4. 인게임 메인 아레나 -->
     <div id="game-arena" class="hidden">
         <div class="room-tag">
@@ -1013,56 +874,7 @@
 
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
-// 1. 내가 클릭한 이모티콘을 서버로 전송하는 함수
-function sendEmoji(emoji) {
-    // currentRoomCode는 현재 접속한 방 코드 변수명에 맞게 맞춰주세요 (예: roomCode 등)
-    if (typeof currentRoomCode !== 'undefined' && currentRoomCode) {
-        socket.emit('sendEmojiBubble', { roomCode: currentRoomCode, emoji: emoji });
-    } else if (typeof myRoomCode !== 'undefined' && myRoomCode) {
-        socket.emit('sendEmojiBubble', { roomCode: myRoomCode, emoji: emoji });
-    }
-}
 
-// 2. 서버로부터 누군가가 보낸 이모티콘을 수신했을 때 화면에 띄우는 이벤트
-socket.on('emojiBubbleReceived', ({ playerId, emoji }) => {
-    // 현재 화면에 그려져 있는 플레이어 프로필 엘리먼트를 찾습니다.
-    // HTML 구조에 맞게 ID 패턴(예: `player-${playerId}` 또는 클래스 등)을 조율해야 합니다.
-    let playerElement = document.getElementById(`player-${playerId}`) 
-                     || document.querySelector(`[data-player-id="${playerId}"]`);
-
-    // 만약 마땅한 ID가 없다면, 닉네임 텍스트 등으로 유연하게 탐색을 시도합니다.
-    if (!playerElement) {
-        // 예시: 플레이어 카드를 순회하며 비교
-        const cards = document.querySelectorAll('.player-card, .profile-slot');
-        cards.forEach(card => {
-            if (card.innerText.includes(playerId) || card.dataset.id === playerId) {
-                playerElement = card;
-            }
-        });
-    }
-
-    if (!playerElement) return; // 요소를 찾지 못하면 중단
-
-    // 기존에 해당 유저에게 떠 있던 말풍선이 있으면 즉시 제거
-    const existingBubble = playerElement.querySelector('.emoji-bubble');
-    if (existingBubble) {
-        existingBubble.remove();
-    }
-
-    // 말풍선 생성 및 부착
-    const bubble = document.createElement('div');
-    bubble.className = 'emoji-bubble';
-    bubble.innerText = emoji;
-    
-    playerElement.appendChild(bubble);
-
-    // 1.8초 노출 후 부드럽게 사라짐 처리
-    setTimeout(() => {
-        bubble.style.opacity = '0';
-        bubble.style.transform = 'translateX(-50%) translateY(-10px) scale(0.8)';
-        setTimeout(() => bubble.remove(), 400);
-    }, 1800);
-});
         function playClatterSound() {
             try {
                 if (!audioCtx) audioCtx = new AudioCtx();
