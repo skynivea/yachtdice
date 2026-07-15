@@ -203,36 +203,66 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('writeScore', ({ roomCode, category }) => {
-        const room = rooms[roomCode];
-        if (!room || room.stage !== 'play') return;
+socket.on('writeScore', ({ roomCode, category }) => {
+    const room = rooms[roomCode];
+    if (!room || room.stage !== 'play') return;
 
-        const activePlayer = room.players[room.currentTurnIndex];
-        if (activePlayer.id !== socket.id) return;
-        if (activePlayer.scores[category] !== undefined) return;
-        if (room.diceValues.every(v => v === 0)) return;
+    const activePlayer = room.players[room.currentTurnIndex];
+    if (activePlayer.id !== socket.id) return;
+    if (activePlayer.scores[category] !== undefined) return;
+    if (room.diceValues.every(v => v === 0)) return;
 
-        const score = calculateScore(category, room.diceValues);
-        activePlayer.scores[category] = score;
+    // 1. 점수 기록
+    const score = calculateScore(category, room.diceValues);
+    activePlayer.scores[category] = score;
 
-        io.to(roomCode).emit('scoreRegistered', {
-            playerId: socket.id,
-            category,
-            score
-        });
-
-        const isFinished = room.players.every(p => {
-            if (!p.active) return true;
-            return Object.keys(p.scores).length === 12;
-        });
-
-        if (isFinished) {
-            room.stage = 'finished';
-            io.to(roomCode).emit('gameFinished', room);
-        } else {
-            nextTurn(roomCode);
+    // 2. 상단 점수 합산 및 보너스 자동 연산
+    const subCategories = ['aces','duals','triples','quads','pentas','hexas'];
+    let subTotal = 0;
+    subCategories.forEach(cat => {
+        if (activePlayer.scores[cat] !== undefined) {
+            subTotal += activePlayer.scores[cat];
         }
     });
+
+    // 63점 돌파 시 즉시 보너스 35점 부여 (아직 돌파 못했다면 상태 유지)
+    if (subTotal >= 63 && activePlayer.scores['bonus'] === undefined) {
+        activePlayer.scores['bonus'] = 35;
+    }
+
+    io.to(roomCode).emit('scoreRegistered', {
+        playerId: socket.id,
+        category,
+        score,
+        bonusAwarded: activePlayer.scores['bonus'] === 35
+    });
+
+    // 3. [핵심 수정] 종료 판정: 보너스를 제외한 "순수 족보 12칸"이 모두 채워졌는가?
+    const pureCategories = [
+        'aces','duals','triples','quads','pentas','hexas',
+        'choice','poker','full_house','s_straight','l_straight','yacht'
+    ];
+
+    const isFinished = room.players.every(p => {
+        if (!p.active) return true; // 탈주자는 제외
+        // 유저가 직접 채워야 하는 12개 카테고리가 모두 채워졌는지 확인
+        return pureCategories.every(cat => p.scores[cat] !== undefined);
+    });
+
+    if (isFinished) {
+        // 게임이 완전히 끝나는 시점에 아직 보너스를 못 받은 사람들은 0점으로 일괄 확정 처리
+        room.players.forEach(p => {
+            if (p.scores['bonus'] === undefined) {
+                p.scores['bonus'] = 0;
+            }
+        });
+        
+        room.stage = 'finished';
+        io.to(roomCode).emit('gameFinished', room);
+    } else {
+        nextTurn(roomCode);
+    }
+});
 
     socket.on('restartGame', ({ roomCode }) => {
         const room = rooms[roomCode];
