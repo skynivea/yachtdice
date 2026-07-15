@@ -81,7 +81,7 @@
             width: 100%;
         }
         .btn-action {
-            background: #e65100;
+            background: #b71c1c;
             color: white;
             border: none;
             padding: 12px 20px;
@@ -93,6 +93,9 @@
             margin-top: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             transition: background 0.2s;
+        }
+        .btn-action:hover:not(:disabled) {
+            background: #d32f2f;
         }
         .btn-action:disabled {
             background: #444;
@@ -209,7 +212,7 @@
             user-select: none;
         }
 
-        /* 가죽 컵 (드래그 시 body 전체 영역 탈출을 위해 position: fixed로 동적 제어) */
+        /* 가죽 컵 */
         #dice-cup {
             width: 90px;
             height: 120px;
@@ -226,7 +229,9 @@
             align-items: center;
             justify-content: center;
             position: absolute;
-            z-index: 9999; /* 화면 최상단에 뜨도록 설계 */
+            top: 150px;
+            left: 35px;
+            z-index: 500; /* 자유 드래그 시 다른 엘리먼트 위를 떠돌 수 있도록 높은 z-index */
             touch-action: none;
             user-select: none;
             transition: transform 0.05s linear;
@@ -332,70 +337,955 @@
             font-weight: bold;
         }
 
-        /* ----------------------------------
-           🎨 진짜 주사위 눈 디자인 (CSS Grid)
-        ---------------------------------- */
+        /* 🎲 CSS 주사위 그래픽 개선 */
         .dice {
-            width: 54px;
-            height: 54px;
-            background: #ffffff;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 15px 15px, #ffffff, #eaeaea);
             border-radius: 10px;
-            box-shadow: 0 5px 10px rgba(0,0,0,0.4), inset 0 -4px 0 #d9d9d9;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4), inset 0 -3px 0 #cccccc, inset 0 2px 3px rgba(255,255,255,0.9);
             cursor: pointer;
             user-select: none;
+            position: relative;
+            transition: transform 0.1s ease, opacity 0.5s ease;
+            box-sizing: border-box;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            padding: 6px;
-            box-sizing: border-box;
-            position: relative;
-            transition: transform 0.1s ease, opacity 0.5s ease;
-        }
-        .dice.held {
-            border: 3px solid var(--accent-gold);
-            box-shadow: 0 0 15px var(--accent-gold), inset 0 -4px 0 #d9d9d9;
+            padding: 5px;
+            gap: 2px;
         }
         
-        /* 주사위 점 */
+        .dice.held {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 15px var(--accent-gold), inset 0 -2px 0 #cccccc;
+        }
+
+        /* 주사위 눈 디자인 (Dot) */
         .dot {
+            display: block;
             background-color: #111111;
             border-radius: 50%;
             width: 8px;
             height: 8px;
             justify-self: center;
             align-self: center;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.5);
         }
-        
-        /* 1의 눈은 정중앙에 위치하는 커다랗고 빨간색 도트 */
-        .dice[data-value="1"] {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+
+        /* 1의 눈 정중앙 크고 빨간색 */
         .dice[data-value="1"] .dot {
+            grid-column: 2;
+            grid-row: 2;
             width: 14px;
             height: 14px;
             background-color: #d32f2f;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
         }
 
-        /* 각 주사위 값에 따른 그리드 배치 정의 */
-        .dice[data-value="2"] .dot:nth-child(1) { grid-area: 1 / 1; }
-        .dice[data-value="2"] .dot:nth-child(2) { grid-area: 3 / 3; }
+        /* 각 주사위 값에 매칭되는 그리드 제어 클래스 */
+        .pos-1 { grid-column: 1; grid-row: 1; }
+        .pos-2 { grid-column: 3; grid-row: 1; }
+        .pos-3 { grid-column: 1; grid-row: 2; }
+        .pos-4 { grid-column: 2; grid-row: 2; }
+        .pos-5 { grid-column: 3; grid-row: 2; }
+        .pos-6 { grid-column: 1; grid-row: 3; }
+        .pos-7 { grid-column: 3; grid-row: 3; }
+        
+        @keyframes dice-spurt {
+            0% {
+                transform: scale(0.2) rotate(0deg) translate(-50px, -50px);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(180deg) translate(10px, -10px);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1) rotate(360deg) translate(0, 0);
+                opacity: 1;
+            }
+        }
+        .dice-rolling {
+            animation: dice-spurt 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+        }
 
-        .dice[data-value="3"] .dot:nth-child(1) { grid-area: 1 / 1; }
-        .dice[data-value="3"] .dot:nth-child(2) { grid-area: 2 / 2; }
-        .dice[data-value="3"] .dot:nth-child(3) { grid-area: 3 / 3; }
+        .dice-glide {
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s ease;
+        }
 
-        .dice[data-value="4"] .dot:nth-child(1) { grid-area: 1 / 1; }
-        .dice[data-value="4"] .dot:nth-child(2) { grid-area: 1 / 3; }
-        .dice[data-value="4"] .dot:nth-child(3) { grid-area: 3 / 1; }
-        .dice[data-value="4"] .dot:nth-child(4) { grid-area: 3 / 3; }
+        /* 컵으로 빨려 들어가는 애니메이션 효과 */
+        @keyframes dice-to-cup {
+            0% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0) rotate(360deg) translate(150px, -50px);
+                opacity: 0;
+            }
+        }
+        .dice-gathering {
+            animation: dice-to-cup 0.35s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards !important;
+            pointer-events: none;
+        }
 
-        .dice[data-value="5"] .dot:nth-child(1) { grid-area: 1 / 1; }
-        .dice[data-value="5"] .dot:nth-child(2) { grid-area: 1 / 3; }
-        .dice[data-value="5"] .dot:nth-child(3) { grid-area: 2 / 2; }
-        .dice[data-value="5"] .dot:nth-child(4) { grid-area: 3 / 1; }
-        .dice[data-value="5"] .dot:nth-child(5) { grid-area: 3 / 3; }
+        .roll-counter-display {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ccc;
+            margin-top: 15px;
+        }
+        .hidden { display: none !important; }
 
-        .dice[data-value="6"] .dot:nth-child(1) { grid-area: 1 / 1; }
-        .dice[data-value="6Normally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
+        @media (max-width: 768px) {
+            #board-wrapper {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            #outer-board {
+                width: 100%;
+                max-width: 480px;
+            }
+            #cup-shaker-zone {
+                width: 100%;
+                max-width: 480px;
+                height: 120px;
+                flex-direction: row;
+                padding: 10px 20px;
+            }
+            #dice-cup {
+                top: 10px;
+                left: calc(50% - 45px);
+                height: 100px;
+            }
+
+            #scoreboard-section {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1000;
+                border-radius: 0;
+                background: var(--paper-white);
+                overflow-y: auto;
+                padding: 25px;
+            }
+
+            #scoreboard-section.mobile-open {
+                display: block !important;
+            }
+
+            .close-score-btn {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header style="background:#0a0a0a; width:100%; padding:15px; text-align:center; font-size:22px; font-weight:900; color:var(--accent-gold); border-bottom:1px solid #222;">
+        🎲 YACHT DICE DELUXE
+    </header>
+
+    <!-- 1. 메인 홈 -->
+    <div id="main-home">
+        <h1 class="main-title">요트 다이스</h1>
+        <div id="home-menu">
+            <button class="btn-gold" onclick="showInputForm('create')">🏠 방 만들기</button>
+            <button class="btn-outline" style="margin-top:10px;" onclick="showInputForm('join')">🔑 방 들어가기</button>
+        </div>
+
+        <div id="create-form" class="hidden">
+            <h3 style="margin-top:0;">방 만들기</h3>
+            <input type="text" id="nickname-create" class="flat-input" placeholder="닉네임 (최대 8자)" maxlength="8">
+            <button class="btn-gold" onclick="createRoom()">방 생성</button>
+            <button class="btn-outline" style="margin-top:8px;" onclick="goBackToMenu()">뒤로가기</button>
+        </div>
+
+        <div id="join-form" class="hidden">
+            <h3 style="margin-top:0;">방 들어가기</h3>
+            <input type="text" id="nickname-join" class="flat-input" placeholder="닉네임" maxlength="8">
+            <input type="text" id="room-code-input" class="flat-input" placeholder="방 코드 (4자리)" maxlength="4" style="text-transform:uppercase;">
+            <button class="btn-gold" onclick="joinRoom()">입장</button>
+            <button class="btn-outline" style="margin-top:8px;" onclick="goBackToMenu()">뒤로가기</button>
+        </div>
+    </div>
+
+    <!-- 2. 대기실 -->
+    <div id="waiting-lobby" class="hidden">
+        <div class="lobby-title">🚪 대기방</div>
+        <div style="font-size: 32px; font-weight: bold; color: var(--accent-gold); margin: 15px 0;" id="lobby-code-display">-</div>
+        <div class="user-list" id="lobby-users" style="background:#0a0a0a; padding:10px; border-radius:8px; text-align:left; min-height:100px; margin-bottom:20px;"></div>
+        <button id="start-btn" class="btn-gold hidden" onclick="startGame()">▶️ 게임 시작</button>
+        <div id="owner-waiting-msg" style="font-size:13px; color:#888;">방장이 시작하기를 기다리는 중...</div>
+    </div>
+
+    <!-- 3. 인게임 메인 아레나 -->
+    <div id="game-arena" class="hidden">
+        <div class="room-tag">
+            <span>방 코드: <strong id="room-code-display" style="color:var(--accent-gold);">-</strong></span>
+            
+            <div style="display:flex; gap: 5px;">
+                <button id="show-score-btn" class="btn-outline" style="width:auto; padding:5px 12px; font-size:12px; background: #e65100; color:white; border:none;" onclick="openScoreboardMobile()">📊 점수 확인</button>
+                <button id="gyro-init-btn" class="btn-outline" style="width:auto; padding:5px 10px; font-size:11px;" onclick="requestGyroPermission()">📳 흔들기 센서 활성화</button>
+            </div>
+            
+            <span id="turn-indicator" style="font-weight:bold;">대기 중...</span>
+        </div>
+
+        <div id="board-wrapper">
+            
+            <!-- [왼쪽] 큰 네모 게임판 -->
+            <div id="outer-board">
+                <!-- 상단 홈 5개 -->
+                <div class="dice-slots-container" id="hold-home">
+                    <div class="dice-slot" data-index="0"></div>
+                    <div class="dice-slot" data-index="1"></div>
+                    <div class="dice-slot" data-index="2"></div>
+                    <div class="dice-slot" data-index="3"></div>
+                    <div class="dice-slot" data-index="4"></div>
+                </div>
+
+                <!-- 안쪽 작은 버건디 벨벳 필드 -->
+                <div id="inner-velvet-field">
+                    <div id="active-dice-area"></div>
+                </div>
+
+                <div class="roll-counter-display" id="roll-count-text">남은 횟수: 3/3</div>
+                
+                <!-- 액션 버튼 (리롤 즉시 종료 및 점수입력) -->
+                <button id="confirm-score-btn" class="btn-action" disabled onclick="forceEndRolls()">🛑 리롤 종료하고 점수 입력하기</button>
+                <button id="restart-btn" class="btn-outline hidden" style="margin-top:10px;" onclick="requestRestart()">🔄 다시 하기</button>
+            </div>
+
+            <!-- [중앙] 원통 컵 흔들기 구획 -->
+            <div id="cup-shaker-zone">
+                <div class="zone-label">자유롭게<br>사방으로<br>흔드세요</div>
+                
+                <!-- 원통 가죽 컵 -->
+                <div id="dice-cup" class="hidden">
+                    <div class="cup-inner-text">가죽 컵<br>🪘<br>흔들기</div>
+                </div>
+
+                <div class="zone-label">SHAKE IT</div>
+            </div>
+
+            <!-- [오른쪽/모바일 팝업] 스코어판 -->
+            <div id="scoreboard-section">
+                <!-- 모바일 전용 닫기 버튼 -->
+                <button class="close-score-btn" onclick="closeScoreboardMobile()">❌ 닫기 (게임판으로)</button>
+
+                <h2 class="paper-title">요트다이스</h2>
+                <table id="score-table">
+                    <thead>
+                        <tr id="table-header">
+                            <th>카테고리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="score-table-body">
+                        <!-- JS 렌더링 영역 -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let myId = null;
+        let isClientRolling = false;
+        let isDelayedMoving = false; 
+        let selectedCategory = null; 
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playClatterSound() {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const now = audioCtx.currentTime;
+                for (let i = 0; i < 3; i++) {
+                    const timeOffset = i * 0.08;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120 + Math.random() * 80, now + timeOffset);
+                    osc.frequency.exponentialRampToValueAtTime(300 + Math.random() * 200, now + timeOffset + 0.05);
+                    
+                    gain.gain.setValueAtTime(0.15, now + timeOffset);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + timeOffset + 0.06);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + timeOffset);
+                    osc.stop(now + timeOffset + 0.07);
+                }
+            } catch (e) { console.log(e); }
+        }
+
+        const categories = [
+            { id: 'aces', name: '에이스' },
+            { id: 'duals', name: '듀얼' }, 
+            { id: 'triples', name: '트리플' },
+            { id: 'quads', name: '쿼드' },
+            { id: 'pentas', name: '펜타' },
+            { id: 'hexas', name: '헥사' },
+            { id: 'bonus', name: '상단 보너스 +35점', isSpecial: true }, 
+            { id: 'choice', name: '초이스' }, 
+            { id: 'poker', name: '포커' },
+            { id: 'full_house', name: '풀 하우스' },
+            { id: 's_straight', name: '스몰 스트레이트' },
+            { id: 'l_straight', name: '라지 스트레이트' },
+            { id: 'yacht', name: '요트' },
+            { id: 'total', name: '총점', isSpecial: true }
+        ];
+
+        let isDraggingCup = false;
+        let lastX = 0, lastY = 0;
+        let totalDragDistance = 0;
+        let lastSoundTime = 0;
+
+        let lastShakingX = null, lastShakingY = null, lastShakingZ = null;
+        let shakeThreshold = 15; 
+        let shakeAccumulator = 0;
+
+        function openScoreboardMobile() {
+            document.getElementById("scoreboard-section").classList.add("mobile-open");
+        }
+
+        function closeScoreboardMobile() {
+            document.getElementById("scoreboard-section").classList.remove("mobile-open");
+        }
+
+        function showInputForm(type) {
+            document.getElementById("home-menu").classList.add("hidden");
+            if (type === 'create') {
+                document.getElementById("create-form").classList.remove("hidden");
+            } else {
+                document.getElementById("join-form").classList.remove("hidden");
+            }
+        }
+
+        function goBackToMenu() {
+            document.getElementById("create-form").classList.add("hidden");
+            document.getElementById("join-form").classList.add("hidden");
+            document.getElementById("home-menu").classList.remove("hidden");
+        }
+
+        function createRoom() {
+            const nickname = document.getElementById("nickname-create").value.trim() || `Player1`;
+            socket.emit('createRoom', { nickname });
+        }
+
+        function joinRoom() {
+            const nickname = document.getElementById("nickname-join").value.trim() || `Player2`;
+            const roomCode = document.getElementById("room-code-input").value.trim().toUpperCase();
+            if (!roomCode) return alert("방 코드를 입력하세요.");
+            socket.emit('joinRoom', { roomCode, nickname });
+        }
+
+        function startGame() {
+            socket.emit('startGame', { roomCode: currentRoom.code });
+        }
+
+        function requestRestart() {
+            socket.emit('restartGame', { roomCode: currentRoom.code });
+        }
+
+        // 족보 클릭 시 "더블 클릭(두 번째 클릭) 즉시 확정" 플로우 구현[cite: 1]
+        function handleCellClick(categoryId) {
+            if (isClientRolling || isDelayedMoving) return;
+            
+            if (selectedCategory === categoryId) {
+                // 이미 선택되어 있는 상태에서 다시 누르면 즉시 확정 및 서버 전송![cite: 1]
+                confirmSelectedScore();
+            } else {
+                // 최초 선택: 대기(미리보기) 상태로 돌입
+                selectedCategory = categoryId;
+                renderScoreBoard(); 
+            }
+        }
+
+        function confirmSelectedScore() {
+            if (!selectedCategory || !currentRoom) return;
+            socket.emit('writeScore', {
+                roomCode: currentRoom.code,
+                category: selectedCategory
+            });
+            selectedCategory = null;
+            closeScoreboardMobile();
+        }
+
+        // 리롤 즉시 종료 기능: 남은 횟수가 있더라도 강제 킵 홈 이동 및 점수 입력 진입[cite: 1]
+        function forceEndRolls() {
+            if (!currentRoom || isClientRolling || isDelayedMoving) return;
+            
+            // 1. 모든 주사위를 강제 Keep 상태로 변경[cite: 1]
+            currentRoom.isHeld = [true, true, true, true, true];
+            // 2. 남은 리롤 횟수를 0으로 강제 소진[cite: 1]
+            currentRoom.remainingRolls = 0;
+            
+            isDelayedMoving = true;
+            renderDice(false);
+            
+            // 3. 킵 영역 이동 후 점수 입력 단계 활성화[cite: 1]
+            setTimeout(() => {
+                isDelayedMoving = false;
+                renderDice(false);
+                renderScoreBoard();
+                updateCupState();
+                openScoreboardMobile();
+            }, 800);
+        }
+
+        socket.on('roomCreated', ({ roomCode }) => {
+            myId = socket.id;
+            transitionToLobby(roomCode);
+        });
+
+        socket.on('roomJoined', ({ roomCode }) => {
+            myId = socket.id;
+            transitionToLobby(roomCode);
+        });
+
+        function transitionToLobby(roomCode) {
+            document.getElementById("main-home").classList.add("hidden");
+            document.getElementById("waiting-lobby").classList.remove("hidden");
+            document.getElementById("lobby-code-display").innerText = roomCode;
+        }
+
+        socket.on('gameStateUpdate', (room) => {
+            currentRoom = room;
+            if (room.stage === 'lobby') {
+                updateLobbyUsers(room);
+                return;
+            }
+            document.getElementById("waiting-lobby").classList.add("hidden");
+            document.getElementById("game-arena").classList.remove("hidden");
+            updateRoomState(room);
+        });
+
+        function updateLobbyUsers(room) {
+            const container = document.getElementById("lobby-users");
+            container.innerHTML = "";
+            room.players.forEach((p, idx) => {
+                const item = document.createElement("div");
+                item.style.padding = "8px";
+                item.style.borderBottom = "1px solid #222";
+                item.innerHTML = `<span>${idx === 0 ? '👑 ' : '👤 '}${p.name} ${p.id === myId ? '(나)' : ''}</span>`;
+                container.appendChild(item);
+            });
+
+            const isOwner = room.players[0].id === myId;
+            if (isOwner) {
+                document.getElementById("start-btn").classList.remove("hidden");
+                document.getElementById("owner-waiting-msg").classList.add("hidden");
+            } else {
+                document.getElementById("start-btn").classList.add("hidden");
+                document.getElementById("owner-waiting-msg").classList.remove("hidden");
+            }
+        }
+
+        socket.on('gameStarted', (room) => {
+            document.getElementById("waiting-lobby").classList.add("hidden");
+            document.getElementById("game-arena").classList.remove("hidden");
+            updateRoomState(room);
+        });
+
+        socket.on('diceRolled', ({ diceValues, remainingRolls, isHeld }) => {
+            currentRoom.diceValues = diceValues;
+            currentRoom.remainingRolls = remainingRolls;
+            currentRoom.isHeld = isHeld;
+
+            isClientRolling = true;
+            renderDice(true);
+
+            setTimeout(() => {
+                isClientRolling = false;
+                
+                if (remainingRolls === 0) {
+                    isDelayedMoving = true;
+                    renderDice(false);
+                    
+                    setTimeout(() => {
+                        currentRoom.isHeld = [true, true, true, true, true];
+                        isDelayedMoving = false;
+                        renderDice(false);
+                        renderScoreBoard();
+                        updateCupState();
+                        openScoreboardMobile();
+                    }, 1200);
+                } else {
+                    renderDice(false);
+                    renderScoreBoard();
+                    updateCupState();
+                }
+            }, 700);
+        });
+
+        socket.on('scoreRegistered', ({ playerId, category, score }) => {
+            selectedCategory = null; 
+            if (category === 'yacht' && score === 50) {
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            }
+        });
+
+        socket.on('gameFinished', (room) => {
+            updateRoomState(room);
+            alert("게임이 종료되었습니다!");
+            if (room.players[0].id === myId) {
+                document.getElementById("restart-btn").classList.remove("hidden");
+            }
+        });
+
+        function updateRoomState(room) {
+            currentRoom = room;
+            document.getElementById("room-code-display").innerText = room.code;
+
+            const activePlayer = room.players[room.currentTurnIndex];
+            const isMyTurn = activePlayer.id === myId;
+
+            const turnIndicator = document.getElementById("turn-indicator");
+            if (isMyTurn) {
+                turnIndicator.innerHTML = `<span style="color:var(--accent-gold);">🎲 당신의 차례! 컵을 흔들어 주사위를 굴리세요!</span>`;
+            } else {
+                turnIndicator.innerText = `👤 ${activePlayer.name} 차례`;
+            }
+
+            // [수정] 서버의 최신 남은 횟수(remainingRolls) 데이터를 실시간 반영해 갱신[cite: 1]
+            document.getElementById("roll-count-text").innerText = `남은 횟수: ${room.remainingRolls}/3`;
+
+            // 리롤 종료 및 점수입력 버튼 활성화 제어 (내 턴이고, 굴릴 수 있는 기회가 0~2번 소진된 상태일 때 활성화)
+            const confirmBtn = document.getElementById("confirm-score-btn");
+            if (isMyTurn && room.remainingRolls < 3 && room.remainingRolls > 0) {
+                confirmBtn.removeAttribute("disabled");
+            } else {
+                confirmBtn.setAttribute("disabled", "true");
+            }
+
+            renderDice();
+            renderScoreBoard();
+            updateCupState();
+        }
+
+        const cup = document.getElementById("dice-cup");
+        const shakerZone = document.getElementById("cup-shaker-zone");
+
+        function updateCupState() {
+            if (!currentRoom) return;
+            const isMyTurn = currentRoom.players[currentRoom.currentTurnIndex].id === myId;
+            
+            if (isMyTurn && currentRoom.remainingRolls > 0 && !isClientRolling && !isDelayedMoving) {
+                cup.classList.remove("hidden");
+                resetCupPosition();
+            } else {
+                cup.classList.add("hidden");
+            }
+        }
+
+        function resetCupPosition() {
+            if (window.innerWidth > 768) {
+                cup.style.top = "150px";
+                cup.style.left = "35px";
+            } else {
+                cup.style.top = "10px";
+                cup.style.left = "calc(50% - 45px)";
+            }
+            cup.style.transform = "rotate(0deg) scale(1)";
+            totalDragDistance = 0;
+            isDraggingCup = false;
+
+            // [취소 시 복구 연출] 던지는 조건(최소 드래그 거리) 미달 시, 빨려 들어가던 주사위들을 원래대로 복구[cite: 1]
+            const activeDice = document.querySelectorAll("#active-dice-area .dice");
+            activeDice.forEach(d => {
+                d.classList.remove("dice-gathering");
+                d.style.display = "grid"; // 다시 필드 위에 정상 등장
+            });
+        }
+
+        cup.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('mouseup', endDrag);
+
+        cup.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
+        window.addEventListener('touchmove', (e) => dragMove(e.touches[0]), { passive: false });
+        window.addEventListener('touchend', endDrag);
+
+        // [추가 연출] 컵 드래그 터치 시작 시 필드 주사위를 빨아들이는 시각 효과 발동[cite: 1]
+        function startDrag(e) {
+            if (isClientRolling || isDelayedMoving) return;
+            isDraggingCup = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            totalDragDistance = 0;
+
+            // 벨벳 필드 위에 노출되어 있는 활성 주사위 수집[cite: 1]
+            const activeDice = document.querySelectorAll("#active-dice-area .dice");
+            if (activeDice.length > 0) {
+                playClatterSound(); // 주사위 쓸어 담는 사운드
+                activeDice.forEach(d => {
+                    d.classList.add("dice-gathering"); // 컵 안으로 빨려 들어가는 효과 부여[cite: 1]
+                });
+            }
+        }
+
+        function dragMove(e) {
+            if (!isDraggingCup) return;
+            if (e.preventDefault) e.preventDefault();
+
+            const currentX = e.clientX;
+            const currentY = e.clientY;
+            
+            const deltaX = currentX - lastX;
+            const deltaY = currentY - lastY;
+            
+            lastX = currentX;
+            lastY = currentY;
+
+            // [수정] 드래그 제한 영역을 대폭 완화(자유 드래그 지원)하여 어디든 이동 가능[cite: 1]
+            let newLeft = cup.offsetLeft + deltaX;
+            let newTop = cup.offsetTop + deltaY;
+
+            cup.style.left = newLeft + "px";
+            cup.style.top = newTop + "px";
+
+            // [컵 안에서 섞임/숨김 연출] 드래그 중에는 주사위가 컵 깊이 들어가 보이지 않음[cite: 1]
+            const activeDice = document.querySelectorAll("#active-dice-area .dice");
+            activeDice.forEach(d => d.style.display = "none");
+
+            const travel = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+            totalDragDistance += travel;
+
+            if (travel > 1.5 && Date.now() - lastSoundTime > 110) {
+                playClatterSound();
+                lastSoundTime = Date.now();
+                const angle = (Math.random() - 0.5) * 35;
+                cup.style.transform = `rotate(${angle}deg) scale(1.08)`;
+            }
+        }
+
+        function endDrag() {
+            if (!isDraggingCup) return;
+            isDraggingCup = false;
+
+            if (totalDragDistance > 650) {
+                triggerRoll();
+            } else {
+                resetCupPosition(); // 거리 부족으로 드래그 취소 시 원래 상태로 복구[cite: 1]
+            }
+        }
+
+        function triggerRoll() {
+            if (!currentRoom || isClientRolling || isDelayedMoving) return;
+            isClientRolling = true;
+            cup.classList.add("hidden");
+            
+            // [클릭 해제/Roll 작동 시] 숨겼던 주사위를 다시 나타내며 롤링 애니메이션 시작 준비[cite: 1]
+            const activeDice = document.querySelectorAll("#active-dice-area .dice");
+            activeDice.forEach(d => d.style.display = "grid");
+
+            socket.emit('rollDice', {
+                roomCode: currentRoom.code,
+                clientHeld: currentRoom.isHeld
+            });
+        }
+
+        // 🎲 주사위 렌더링 함수 개선 (CSS Grid 및 1의 붉은 눈 완벽 구현)[cite: 1]
+        function renderDice(animate = false) {
+            const activeArea = document.getElementById("active-dice-area");
+            const slots = document.querySelectorAll(".dice-slot");
+            
+            activeArea.innerHTML = "";
+            slots.forEach(slot => slot.innerHTML = "");
+
+            if (!currentRoom) return;
+
+            const isMyTurn = currentRoom.players[currentRoom.currentTurnIndex].id === myId;
+            const isTurnJustStarted = currentRoom.diceValues.every(v => v === 0);
+
+            if (isTurnJustStarted) {
+                if (isMyTurn) {
+                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px; text-align:center;">가죽 컵을 사방으로 흔들거나<br>폰을 세게 쥐고 흔드세요!</span>`;
+                } else {
+                    activeArea.innerHTML = `<span style="color:rgba(255,255,255,0.4); font-size:12px;">상대가 고민하는 중입니다...</span>`;
+                }
+                return;
+            }
+
+            // 주사위 눈 배치 매핑 객체 (3x3 격자 좌표값 지정)[cite: 1]
+            const dotPositions = {
+                1: [4],                  // 정중앙
+                2: [1, 7],               // 좌상, 우하
+                3: [1, 4, 7],            // 좌상, 중앙, 우하
+                4: [1, 2, 6, 7],         // 좌상, 우상, 좌하, 우하
+                5: [1, 2, 4, 6, 7],      // 좌상, 우상, 중앙, 좌하, 우하
+                6: [1, 2, 3, 5, 6, 7]    // 좌상, 우상, 좌중, 우중, 좌하, 우하
+            };
+
+            let holdSlotIndex = 0;
+            for (let i = 0; i < 5; i++) {
+                const diceValue = currentRoom.diceValues[i];
+                
+                const diceDiv = document.createElement("div");
+                diceDiv.className = `dice ${currentRoom.isHeld[i] ? 'held' : ''}`;
+                diceDiv.setAttribute("data-value", diceValue); // CSS Selector를 위한 데이터 바인딩[cite: 1]
+                
+                if (animate && !currentRoom.isHeld[i]) {
+                    diceDiv.classList.add("dice-rolling");
+                }
+                
+                // 해당 숫자의 눈 구조에 맞추어 격자 엘리먼트(.dot) 생성 및 삽입[cite: 1]
+                const positions = dotPositions[diceValue] || [];
+                positions.forEach(pos => {
+                    const dotSpan = document.createElement("span");
+                    dotSpan.className = `dot pos-${pos}`;
+                    diceDiv.appendChild(dotSpan);
+                });
+
+                if (isMyTurn && currentRoom.remainingRolls > 0 && !isClientRolling && !isDelayedMoving) {
+                    diceDiv.onclick = () => {
+                        currentRoom.isHeld[i] = !currentRoom.isHeld[i];
+                        renderDice(false);
+                    };
+                }
+
+                if (currentRoom.isHeld[i]) {
+                    if (slots[holdSlotIndex]) {
+                        if (isDelayedMoving) {
+                            diceDiv.classList.add("dice-glide");
+                        }
+                        slots[holdSlotIndex].appendChild(diceDiv);
+                        holdSlotIndex++;
+                    }
+                } else {
+                    activeArea.appendChild(diceDiv);
+                }
+            }
+        }
+
+        function renderScoreBoard() {
+            if (!currentRoom) return;
+
+            const headerRow = document.getElementById("table-header");
+            headerRow.innerHTML = "<th>카테고리</th>";
+
+            currentRoom.players.forEach((p, idx) => {
+                const th = document.createElement("th");
+                const isPlayerTurn = currentRoom.currentTurnIndex === idx;
+                th.innerHTML = `${isPlayerTurn ? '🎲 ' : ''}${p.name}${p.id === myId ? '<br>(나)' : ''}`;
+                headerRow.appendChild(th);
+            });
+
+            const tbody = document.getElementById("score-table-body");
+            tbody.innerHTML = "";
+
+            const activePlayer = currentRoom.players[currentRoom.currentTurnIndex];
+            const isMyTurn = activePlayer.id === myId;
+            const isTurnJustStarted = currentRoom.diceValues.every(v => v === 0);
+
+            categories.forEach(cat => {
+                const tr = document.createElement("tr");
+
+                if (cat.isSpecial) {
+                    tr.className = "gray-row";
+                    const nameTd = document.createElement("td");
+                    nameTd.className = "category-label";
+                    nameTd.innerText = cat.name;
+                    tr.appendChild(nameTd);
+
+                    currentRoom.players.forEach(p => {
+                        const valTd = document.createElement("td");
+                        if (cat.id === 'bonus') {
+                            let sum = 0;
+                            ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
+                                if (p.scores[c] !== undefined) sum += p.scores[c];
+                            });
+                            const bonusAchieved = sum >= 63;
+                            valTd.innerHTML = `${sum}/63 <span style="color:${bonusAchieved?'#2e7d32':'#888'};">${bonusAchieved ? '(+35)' : '(0)'}</span>`;
+                        } else if (cat.id === 'total') {
+                            let sum = 0;
+                            let upperSum = 0;
+                            categories.forEach(c => {
+                                if (!c.isSpecial && p.scores[c.id] !== undefined) {
+                                    sum += p.scores[c.id];
+                                }
+                            });
+                            ['aces','duals','triples','quads','pentas','hexas'].forEach(c => {
+                                if (p.scores[c] !== undefined) upperSum += p.scores[c];
+                            });
+                            if (upperSum >= 63) sum += 35;
+                            valTd.innerText = sum;
+                        }
+                        tr.appendChild(valTd);
+                    });
+                    tbody.appendChild(tr);
+                    return;
+                }
+
+                const nameTd = document.createElement("td");
+                nameTd.className = "category-label";
+                nameTd.innerText = cat.name;
+                tr.appendChild(nameTd);
+
+                currentRoom.players.forEach(p => {
+                    const scoreTd = document.createElement("td");
+                    scoreTd.className = "score-cell";
+
+                    if (p.scores[cat.id] !== undefined) {
+                        scoreTd.innerText = p.scores[cat.id];
+                        scoreTd.classList.add("confirmed");
+                    } else {
+                        if (p.id === myId && isMyTurn && !isTurnJustStarted) {
+                            scoreTd.classList.add("interactive");
+                            const possible = calculatePossibleScore(cat.id, currentRoom.diceValues);
+                            
+                            if (selectedCategory === cat.id) {
+                                scoreTd.innerText = `${possible} (클릭시 확정)`;
+                                scoreTd.classList.add("active-preview");
+                            } else {
+                                scoreTd.innerText = `${possible}`;
+                                scoreTd.style.color = "#bbb";
+                            }
+
+                            scoreTd.onclick = () => {
+                                handleCellClick(cat.id);
+                            };
+                        } else {
+                            scoreTd.innerText = "-";
+                            scoreTd.style.opacity = "0.3";
+                        }
+                    }
+                    tr.appendChild(scoreTd);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function calculatePossibleScore(category, vals) {
+            const counts = {};
+            vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+            const sumAll = vals.reduce((a, b) => a + b, 0);
+
+            switch (category) {
+                case 'aces': return (counts[1] || 0) * 1;
+                case 'duals': return (counts[2] || 0) * 2;
+                case 'triples': return (counts[3] || 0) * 3;
+                case 'quads': return (counts[4] || 0) * 4;
+                case 'pentas': return (counts[5] || 0) * 5;
+                case 'hexas': return (counts[6] || 0) * 6;
+                case 'choice': return sumAll;
+                case 'poker': {
+                    for (let val in counts) {
+                        if (counts[val] >= 4) return sumAll;
+                    }
+                    return 0;
+                }
+                case 'full_house': {
+                    let hasThree = false;
+                    let hasTwo = false;
+                    for (let val in counts) {
+                        if (counts[val] === 3) hasThree = true;
+                        if (counts[val] === 2) hasTwo = true;
+                        if (counts[val] === 5) { hasThree = true; hasTwo = true; }
+                    }
+                    return (hasThree && hasTwo) ? sumAll : 0;
+                }
+                case 's_straight': {
+                    const uniqueStr = Array.from(new Set(vals)).sort().join('');
+                    if (uniqueStr.includes('1234') || uniqueStr.includes('2345') || uniqueStr.includes('3456')) return 15;
+                    return 0;
+                }
+                case 'l_straight': {
+                    const uniqueStr = Array.from(new Set(vals)).sort().join('');
+                    if (uniqueStr === '12345' || uniqueStr === '23456') return 30;
+                    return 0;
+                }
+                case 'yacht': {
+                    for (let val in counts) {
+                        if (counts[val] === 5) return 50;
+                    }
+                    return 0;
+                }
+                default: return 0;
+            }
+        }
+
+        function requestGyroPermission() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('devicemotion', handleMotionEvent);
+                            alert("자이로 흔들기 기능이 활성화되었습니다!");
+                            document.getElementById("gyro-init-btn").style.display = "none";
+                        } else {
+                            alert("자이로 센서 접근이 거부되었습니다. 드래그를 이용해 주세요.");
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                if (window.DeviceMotionEvent) {
+                    window.addEventListener('devicemotion', handleMotionEvent);
+                    alert("모바일 흔들기 감지가 작동을 시도합니다!");
+                    document.getElementById("gyro-init-btn").style.display = "none";
+                } else {
+                    alert("이 기기는 흔들기 센서를 지원하지 않습니다. 마우스/터치 드래그를 사용하세요.");
+                }
+            }
+        }
+
+        function handleMotionEvent(event) {
+            if (isClientRolling || isDelayedMoving || !currentRoom) return;
+
+            const activePlayer = currentRoom.players[currentRoom.currentTurnIndex];
+            if (activePlayer.id !== myId || currentRoom.remainingRolls <= 0) return;
+
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+
+            if (lastShakingX === null) {
+                lastShakingX = acc.x;
+                lastShakingY = acc.y;
+                lastShakingZ = acc.z;
+                return;
+            }
+
+            const deltaX = Math.abs(acc.x - lastShakingX);
+            const deltaY = Math.abs(acc.y - lastShakingY);
+            const deltaZ = Math.abs(acc.z - lastShakingZ);
+
+            if (deltaX + deltaY + deltaZ > shakeThreshold) {
+                shakeAccumulator += (deltaX + deltaY + deltaZ);
+                
+                const activeDice = document.querySelectorAll("#active-dice-area .dice");
+                activeDice.forEach(d => d.classList.add("dice-gathering"));
+
+                if (Date.now() - lastSoundTime > 120) {
+                    playClatterSound();
+                    lastSoundTime = Date.now();
+                }
+            }
+
+            lastShakingX = acc.x;
+            lastShakingY = acc.y;
+            lastShakingZ = acc.z;
+
+            if (shakeAccumulator > 320) {
+                shakeAccumulator = 0;
+                triggerRoll();
+            }
+        }
+    </script>
+</body>
+</html>
