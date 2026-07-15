@@ -14,6 +14,12 @@ app.get('/', (req, res) => {
 
 const rooms = {}; 
 
+// 유저가 직접 채우는 순수 족보 12칸 정의 (종료 판정용)
+const pureCategories = [
+    'aces','duals','triples','quads','pentas','hexas',
+    'choice','poker','full_house','s_straight','l_straight','yacht'
+];
+
 function calculateScore(category, vals) {
     if (!vals || vals.every(v => v === 0)) return 0;
     const counts = {};
@@ -30,7 +36,7 @@ function calculateScore(category, vals) {
         case 'choice': return sumAll;
         case 'poker': {
             for (let val in counts) {
-                if (counts[val] >= 4) return sumAll; // 포커 룰: 4개 동일 시 전체 주사위의 합
+                if (counts[val] >= 4) return sumAll;
             }
             return 0;
         }
@@ -79,15 +85,23 @@ function nextTurn(roomCode) {
 
     // 탈주한 플레이어인 경우 자동으로 0점 패스 처리하여 남은 플레이어들의 게임 보장
     if (!nextUser.active) {
-        const unrecordedCategory = ['aces','duals','triples','quads','pentas','hexas','choice','poker','full_house','s_straight','l_straight','yacht']
-            .find(cat => nextUser.scores[cat] === undefined);
+        const unrecordedCategory = pureCategories.find(cat => nextUser.scores[cat] === undefined);
         
         if (unrecordedCategory) {
             nextUser.scores[unrecordedCategory] = 0; // 패스 처리
         }
 
-        const isFinished = room.players.every(p => Object.keys(p.scores).length === 12);
+        // [지뢰 3 해결] 탈주자 자동 패스 시에도 순수 족보 12칸 기준으로 종료를 계산해야 함
+        const isFinished = room.players.every(p => {
+            if (!p.active) return true;
+            return pureCategories.every(cat => p.scores[cat] !== undefined);
+        });
+
         if (isFinished) {
+            room.players.forEach(p => {
+                if (p.scores['bonus'] === undefined) p.scores['bonus'] = 0;
+            });
+            room.stage = 'finished';
             io.to(roomCode).emit('gameFinished', room);
         } else {
             setTimeout(() => { nextTurn(roomCode); }, 500);
@@ -114,7 +128,7 @@ io.on('connection', (socket) => {
             isHeld: [false, false, false, false, false],
             remainingRolls: 3,
             gameStarted: false,
-            stage: 'lobby', // lobby, sequence, play, finished
+            stage: 'lobby',
             cupShaken: false
         };
         socket.join(roomCode);
@@ -138,7 +152,6 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.players[0].id !== socket.id) return;
 
-        // [지뢰 2 해결] 1인 플레이 시 순서 뽑기 생략
         if (room.players.length === 1) {
             room.gameStarted = true;
             room.stage = 'play';
@@ -151,7 +164,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 순서 정하기 주사위 굴리기
     socket.on('rollSequence', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.stage !== 'sequence') return;
@@ -161,10 +173,8 @@ io.on('connection', (socket) => {
             player.sequenceRoll = Math.floor(Math.random() * 6) + 1;
             io.to(roomCode).emit('sequenceRolled', { playerId: socket.id, value: player.sequenceRoll });
 
-            // 모두 굴렸는지 확인
             const allRolled = room.players.every(p => p.sequenceRoll > 0);
             if (allRolled) {
-                // 주사위 눈 기준 내림차순 정렬 (높은 사람부터 선공)
                 room.players.sort((a, b) => b.sequenceRoll - a.sequenceRoll);
                 room.stage = 'play';
                 room.currentTurnIndex = 0;
@@ -190,7 +200,6 @@ io.on('connection', (socket) => {
             room.isHeld = clientHeld.map(v => !!v);
         }
 
-        // [지뢰 5 해결] 홀드된 주사위는 리롤 시 철저히 배제 및 격리
         for (let i = 0; i < 5; i++) {
             if (!room.isHeld[i]) {
                 room.diceValues[i] = Math.floor(Math.random() * 6) + 1;
@@ -206,66 +215,55 @@ io.on('connection', (socket) => {
         });
     });
 
-socket.on('writeScore', ({ roomCode, category }) => {
-    const room = rooms[roomCode];
-    if (!room || room.stage !== 'play') return;
+    socket.on('writeScore', ({ roomCode, category }) => {
+        const room = rooms[roomCode];
+        if (!room || room.stage !== 'play') return;
 
-    const activePlayer = room.players[room.currentTurnIndex];
-    if (activePlayer.id !== socket.id) return;
-    if (activePlayer.scores[category] !== undefined) return;
-    if (room.diceValues.every(v => v === 0)) return;
+        const activePlayer = room.players[room.currentTurnIndex];
+        if (activePlayer.id !== socket.id) return;
+        if (activePlayer.scores[category] !== undefined) return;
+        if (room.diceValues.every(v => v === 0)) return;
 
-    // 1. 점수 기록
-    const score = calculateScore(category, room.diceValues);
-    activePlayer.scores[category] = score;
+        const score = calculateScore(category, room.diceValues);
+        activePlayer.scores[category] = score;
 
-    // 2. 상단 점수 합산 및 보너스 자동 연산
-    const subCategories = ['aces','duals','triples','quads','pentas','hexas'];
-    let subTotal = 0;
-    subCategories.forEach(cat => {
-        if (activePlayer.scores[cat] !== undefined) {
-            subTotal += activePlayer.scores[cat];
-        }
-    });
-
-    // 63점 돌파 시 즉시 보너스 35점 부여 (아직 돌파 못했다면 상태 유지)
-    if (subTotal >= 63 && activePlayer.scores['bonus'] === undefined) {
-        activePlayer.scores['bonus'] = 35;
-    }
-
-    io.to(roomCode).emit('scoreRegistered', {
-        playerId: socket.id,
-        category,
-        score,
-        bonusAwarded: activePlayer.scores['bonus'] === 35
-    });
-
-    // 3. [핵심 수정] 종료 판정: 보너스를 제외한 "순수 족보 12칸"이 모두 채워졌는가?
-    const pureCategories = [
-        'aces','duals','triples','quads','pentas','hexas',
-        'choice','poker','full_house','s_straight','l_straight','yacht'
-    ];
-
-    const isFinished = room.players.every(p => {
-        if (!p.active) return true; // 탈주자는 제외
-        // 유저가 직접 채워야 하는 12개 카테고리가 모두 채워졌는지 확인
-        return pureCategories.every(cat => p.scores[cat] !== undefined);
-    });
-
-    if (isFinished) {
-        // 게임이 완전히 끝나는 시점에 아직 보너스를 못 받은 사람들은 0점으로 일괄 확정 처리
-        room.players.forEach(p => {
-            if (p.scores['bonus'] === undefined) {
-                p.scores['bonus'] = 0;
+        const subCategories = ['aces','duals','triples','quads','pentas','hexas'];
+        let subTotal = 0;
+        subCategories.forEach(cat => {
+            if (activePlayer.scores[cat] !== undefined) {
+                subTotal += activePlayer.scores[cat];
             }
         });
-        
-        room.stage = 'finished';
-        io.to(roomCode).emit('gameFinished', room);
-    } else {
-        nextTurn(roomCode);
-    }
-});
+
+        if (subTotal >= 63 && activePlayer.scores['bonus'] === undefined) {
+            activePlayer.scores['bonus'] = 35;
+        }
+
+        io.to(roomCode).emit('scoreRegistered', {
+            playerId: socket.id,
+            category,
+            score,
+            bonusAwarded: activePlayer.scores['bonus'] === 35
+        });
+
+        // 순수 12칸 기준 종료 판정
+        const isFinished = room.players.every(p => {
+            if (!p.active) return true;
+            return pureCategories.every(cat => p.scores[cat] !== undefined);
+        });
+
+        if (isFinished) {
+            room.players.forEach(p => {
+                if (p.scores['bonus'] === undefined) {
+                    p.scores['bonus'] = 0;
+                }
+            });
+            room.stage = 'finished';
+            io.to(roomCode).emit('gameFinished', room);
+        } else {
+            nextTurn(roomCode);
+        }
+    });
 
     socket.on('restartGame', ({ roomCode }) => {
         const room = rooms[roomCode];
@@ -285,6 +283,8 @@ socket.on('writeScore', ({ roomCode, category }) => {
             room.stage = 'sequence';
             io.to(roomCode).emit('sequenceStageStarted', room);
         }
+        // [보완] 상태 변화를 방 참가자 모두에게 한 번 더 동기화 시켜줌
+        io.to(roomCode).emit('gameStateUpdate', room);
     });
 
     socket.on('disconnect', () => {
@@ -308,11 +308,24 @@ socket.on('writeScore', ({ roomCode, category }) => {
                 }
 
                 if (wasLeader && room.players.length > 0) {
-                    // 차기 인원에게 방장 위임
                     io.to(roomCode).emit('leaderDelegated', { leaderId: room.players[0].id });
                 }
 
-                if (room.stage === 'play' && room.currentTurnIndex === playerIndex) {
+                // [지뢰 2 해결] 순서 뽑기 도중 누군가 이탈했을 때 남은 플레이어들의 자동 선공 시작 보장
+                if (room.stage === 'sequence') {
+                    const allRolled = room.players.every(p => p.sequenceRoll > 0);
+                    if (allRolled && room.players.length > 0) {
+                        room.players.sort((a, b) => b.sequenceRoll - a.sequenceRoll);
+                        room.stage = 'play';
+                        room.currentTurnIndex = 0;
+                        room.diceValues = [0, 0, 0, 0, 0];
+                        room.isHeld = [false, false, false, false, false];
+                        room.remainingRolls = 3;
+                        io.to(roomCode).emit('gameStarted', room);
+                    } else {
+                        io.to(roomCode).emit('gameStateUpdate', room);
+                    }
+                } else if (room.stage === 'play' && room.currentTurnIndex === playerIndex) {
                     nextTurn(roomCode);
                 } else {
                     io.to(roomCode).emit('gameStateUpdate', room);
@@ -322,5 +335,6 @@ socket.on('writeScore', ({ roomCode, category }) => {
     });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => console.log(`http://localhost:${PORT}`));
+// [지뢰 1 해결] 포트를 Render 호스팅 환경에 동적으로 맞춤
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
