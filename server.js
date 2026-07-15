@@ -1,437 +1,450 @@
 const express = require('express');
-const app = express();
 const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
 const server = http.createServer(app);
-const { Server } = require("socket.io");
 const io = new Server(server);
 
-const rooms = {};
+app.use(express.static(__dirname));
 
-// 피셔-예이츠 셔플 (카드 뽑기 순서 결정용)
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    let temp = array[i];
-    array[i] = array[j];
-    array[j] = temp;
-  }
-}
-
-app.get('/', (req, res) => res.sendFile(__dirname + '/index.html'));
-
-io.on('connection', (socket) => {
-  let currentRoomCode = null;
-  let userNickname = null;
-
-  // 방 만들기
-  socket.on('create_room', (nickname) => {
-    const roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-    socket.join(roomCode);
-    
-    userNickname = nickname;
-    currentRoomCode = roomCode;
-
-    rooms[roomCode] = {
-      players: [{ id: socket.id, name: nickname, isHost: true, isConnected: true }],
-      gameState: null
-    };
-
-    socket.emit('room_created', roomCode);
-    io.to(roomCode).emit('update_players', rooms[roomCode].players);
-  });
-
-  // 방 참가하기
-  socket.on('join_room', (data) => {
-    const { code, nickname } = data;
-    const room = rooms[code];
-
-    if (room) {
-      // 1. 만약 튕겼던 플레이어가 재접속한 경우인지 체크 (이름 기준 복구)
-      const existingPlayer = room.players.find(p => p.name === nickname);
-      if (existingPlayer) {
-        existingPlayer.id = socket.id; // 새로운 소켓 ID로 갱신
-        existingPlayer.isConnected = true;
-        socket.join(code);
-        currentRoomCode = code;
-        userNickname = nickname;
-
-        socket.emit('room_joined', code);
-        
-        // 인게임 도중 재접속한 경우 즉시 현재 데이터 동기화
-        if (room.gameState) {
-          socket.emit('game_start_sync', {
-            order: room.gameState.order,
-            scoreboard: room.gameState.scoreboard,
-            round: room.gameState.round,
-            turnIndex: room.gameState.turnIndex
-          });
-          sendGameState(room, code);
-        } else {
-          io.to(code).emit('update_players', room.players);
-        }
-        return;
-      }
-
-      // 2. 신규 유저 진입 (최대 6명)
-      if (room.players.length < 6 && !room.gameState) {
-        socket.join(code);
-        room.players.push({ id: socket.id, name: nickname, isHost: false, isConnected: true });
-        currentRoomCode = code;
-        userNickname = nickname;
-
-        socket.emit('room_joined', code);
-        io.to(code).emit('update_players', room.players);
-      } else {
-        socket.emit('error_msg', '방이 가득 찼거나 이미 게임이 시작되었습니다.');
-      }
-    } else {
-      socket.emit('error_msg', '존재하지 않는 방입니다.');
-    }
-  });
-
-  // 순서 뽑기 카드 셋업 및 공개
-  socket.on('start_order_draw', (roomCode) => {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    const pCount = room.players.length;
-    let cards = Array.from({ length: pCount }, (_, i) => i + 1);
-    shuffle(cards); // 조작 없는 공정한 셔플
-
-    room.orderDraw = {
-      cards: cards,
-      drawn: {}, // socket.id -> card value
-    };
-
-    io.to(roomCode).emit('order_draw_ready', { totalCards: pCount });
-  });
-
-  // 플레이어가 카드를 직접 뽑았을 때
-  socket.on('draw_card', (roomCode) => {
-    const room = rooms[roomCode];
-    if (!room || !room.orderDraw) return;
-
-    if (room.orderDraw.drawn[socket.id]) return; // 이미 뽑았으면 중복 차단
-
-    const pickedCard = room.orderDraw.cards.pop();
-    room.orderDraw.drawn[socket.id] = pickedCard;
-
-    io.to(roomCode).emit('card_drawn_event', { playerId: socket.id, cardValue: pickedCard });
-
-    // 모두 다 뽑았는지 검사
-    if (Object.keys(room.orderDraw.drawn).length === room.players.length) {
-      // 뽑은 카드 숫자 순서대로 순서 재정렬 (오름차순)
-      const sortedPlayers = [...room.players].sort((a, b) => {
-        return room.orderDraw.drawn[a.id] - room.orderDraw.drawn[b.id];
-      });
-
-      // 게임 상태 초기화
-      room.players = sortedPlayers; // 턴 테이블 순서 재정렬 완료
-      
-      const scoreboard = {};
-      sortedPlayers.forEach(p => {
-        scoreboard[p.name] = {
-          ace: null, dual: null, triple: null, quad: null, penta: null, hexa: null,
-          bonus: 0, choice: null, poker: null, fullhouse: null, s_straight: null, l_straight: null, yacht: null,
-          total: 0
-        };
-      });
-
-      room.gameState = {
-        round: 1,
-        turnIndex: 0,
-        order: sortedPlayers.map(p => ({ id: p.id, name: p.name })),
-        scoreboard: scoreboard,
-        dice: [1, 1, 1, 1, 1],
-        keep: [false, false, false, false, false],
-        rollsLeft: 3
-      };
-
-      io.to(roomCode).emit('game_start_sync', {
-        order: room.gameState.order,
-        scoreboard: room.gameState.scoreboard,
-        round: room.gameState.round,
-        turnIndex: room.gameState.turnIndex
-      });
-
-      sendGameState(room, roomCode);
-    }
-  });
-
-  // 주사위 통에 넣기
-  socket.on('put_dice_in_cup', (roomCode) => {
-    const room = rooms[roomCode];
-    if (!room || !room.gameState) return;
-    io.to(roomCode).emit('dice_entered_cup');
-  });
-
-  // 주사위 컵 흔들기 동기화 (마우스 드래그 진동 감지용)
-  socket.on('shake_cup', (roomCode) => {
-    socket.to(roomCode).emit('cup_shaking');
-  });
-
- // 💡 [개선 완료] 주사위 굴리기 (흔들기를 놓았거나, 자동 섞기 버튼 클릭 시)
-  socket.on('roll_dice', (roomCode) => {
-    const room = rooms[roomCode];
-    if (!room || !room.gameState) return;
-    if (room.gameState.rollsLeft <= 0) return;
-
-    const activePlayer = room.gameState.order[room.gameState.turnIndex];
-    if (activePlayer.id !== socket.id) return; // 본인 턴이 아니면 굴리기 금지
-
-    // 1. 주사위를 새로 굴릴 때, 킵(Keep) 상태가 참(true)인 인덱스는 기존 주사위 눈을 '절대' 변경하지 않습니다.
-    // 오직 킵되지 않은(false) 주사위만 1~6 사이의 새로운 값을 가집니다.
-    for (let i = 0; i < 5; i++) {
-      if (!room.gameState.keep[i]) {
-        room.gameState.dice[i] = Math.floor(Math.random() * 6) + 1;
-      }
-    }
-    room.gameState.rollsLeft--;
-
-    // 2. 클라이언트가 "어떤 주사위가 킵되어 있고, 어떤 주사위가 새로 굴러갔는지" 확실히 알 수 있도록
-    // 주사위 눈(dice) 배열, 남은 횟수(rollsLeft)와 함께 현재의 킵 상태(keep)를 '동시에' 전송합니다.
-    io.to(roomCode).emit('dice_rolled', {
-      dice: room.gameState.dice,
-      keep: room.gameState.keep,
-      rollsLeft: room.gameState.rollsLeft
-    });
-  });
-  // 주사위 홀드/해제 (홈에 넣기/빼기)
-  socket.on('toggle_keep', (data) => {
-    const { roomCode, index } = data;
-    const room = rooms[roomCode];
-    if (!room || !room.gameState) return;
-
-    const activePlayer = room.gameState.order[room.gameState.turnIndex];
-    if (activePlayer.id !== socket.id) return;
-
-    room.gameState.keep[index] = !room.gameState.keep[index];
-    io.to(roomCode).emit('keep_updated', room.gameState.keep);
-  });
-
-  // 점수 기입 및 턴 전환
-  socket.on('record_score', (data) => {
-    const { roomCode, category } = data;
-    const room = rooms[roomCode];
-    if (!room || !room.gameState) return;
-
-    const activePlayer = room.gameState.order[room.gameState.turnIndex];
-    if (activePlayer.id !== socket.id) return;
-
-    const scoreboard = room.gameState.scoreboard[activePlayer.name];
-    if (scoreboard[category] !== null) return; // 이미 채운 족보는 기입 불가
-
-    // 점수 계산 알고리즘 가동
-    const score = calculateScore(category, room.gameState.dice);
-    scoreboard[category] = score;
-
-    // 상단 보너스 갱신 체크 (에이스 ~ 헥사)
-    const upperCategories = ['ace', 'dual', 'triple', 'quad', 'penta', 'hexa'];
-    let upperSum = 0;
-    upperCategories.forEach(cat => {
-      if (scoreboard[cat] !== null) upperSum += scoreboard[cat];
-    });
-
-    if (upperSum >= 63) {
-      scoreboard.bonus = 35;
-    }
-
-    // 총점 계산
-    let total = scoreboard.bonus;
-    const allCategories = [...upperCategories, 'choice', 'poker', 'fullhouse', 's_straight', 'l_straight', 'yacht'];
-    allCategories.forEach(cat => {
-      if (scoreboard[cat] !== null) total += scoreboard[cat];
-    });
-    scoreboard.total = total;
-
-    // 족보 기록 완료 이벤트 발송 (애니메이션 구동용 이펙트 데이터 포함)
-    io.to(roomCode).emit('score_recorded', {
-      playerName: activePlayer.name,
-      category: category,
-      score: score,
-      scoreboard: room.gameState.scoreboard,
-      triggerEffect: checkSpecialEffects(category, score, room.gameState.dice)
-    });
-
-    // 다음 플레이어로 턴 전환 준비
-    nextTurn(room, roomCode);
-  });
-
-  // 강제 0점 처리 후 스킵
-  socket.on('skip_inactive_player', (roomCode) => {
-    const room = rooms[roomCode];
-    if (!room || !room.gameState) return;
-
-    const activePlayer = room.gameState.order[room.gameState.turnIndex];
-    const scoreboard = room.gameState.scoreboard[activePlayer.name];
-
-    // 아직 점수가 기입되지 않은 첫 번째 칸을 찾아서 가차없이 0점 주입
-    const categories = ['ace', 'dual', 'triple', 'quad', 'penta', 'hexa', 'choice', 'poker', 'fullhouse', 's_straight', 'l_straight', 'yacht'];
-    const emptyCategory = categories.find(cat => scoreboard[cat] === null);
-
-    if (emptyCategory) {
-      scoreboard[emptyCategory] = 0;
-      io.to(roomCode).emit('score_recorded', {
-        playerName: activePlayer.name,
-        category: emptyCategory,
-        score: 0,
-        scoreboard: room.gameState.scoreboard,
-        triggerEffect: 'none'
-      });
-    }
-
-    nextTurn(room, roomCode);
-  });
-
-  // 플레이어 접속 해제 처리
-  socket.on('disconnect', () => {
-    if (!currentRoomCode) return;
-    const room = rooms[currentRoomCode];
-    if (!room) return;
-
-    const player = room.players.find(p => p.id === socket.id);
-    if (player) {
-      player.isConnected = false; // 소켓 연결 해제 마크업 (방은 유지)
-      io.to(currentRoomCode).emit('player_status_changed', { name: player.name, isConnected: false });
-
-      // 💡 만약 현재 턴인 사람이 나갔다면? 7초 후 자동 0점 강제 패스 타이머 작동 유도 신호 송출
-      const activePlayer = room.gameState ? room.gameState.order[room.gameState.turnIndex] : null;
-      if (activePlayer && activePlayer.id === socket.id) {
-        io.to(currentRoomCode).emit('inactive_player_detected');
-      }
-
-      // 만약 방에 아무도 완전히 접속해있지 않다면(모두 아웃) 방 제거
-      const anyConnected = room.players.some(p => p.isConnected);
-      if (!anyConnected) {
-        delete rooms[currentRoomCode];
-      }
-    }
-  });
-
-  // 턴 진행 제어기
-  function nextTurn(room, roomCode) {
-    room.gameState.keep = [false, false, false, false, false];
-    room.gameState.dice = [1, 1, 1, 1, 1];
-    room.gameState.rollsLeft = 3;
-
-    let nextIdx = room.gameState.turnIndex + 1;
-    if (nextIdx >= room.gameState.order.length) {
-      nextIdx = 0;
-      room.gameState.round++;
-    }
-
-    // 게임 완전 종료 검사 (12라운드 종료 시)
-    if (room.gameState.round > 12) {
-      io.to(roomCode).emit('game_finished', room.gameState.scoreboard);
-      delete rooms[roomCode]; // 방 폐쇄
-      return;
-    }
-
-    room.gameState.turnIndex = nextIdx;
-    
-    io.to(roomCode).emit('turn_changed', {
-      turnIndex: room.gameState.turnIndex,
-      round: room.gameState.round
-    });
-
-    sendGameState(room, roomCode);
-
-    // 💡 다음 사람도 마침 오프라인(튕김) 상태라면? 자동으로 강제 스킵 유도
-    const nextPlayer = room.gameState.order[nextIdx];
-    const originalPlayerObj = room.players.find(p => p.name === nextPlayer.name);
-    if (originalPlayerObj && !originalPlayerObj.isConnected) {
-      io.to(roomCode).emit('inactive_player_detected');
-    }
-  }
-
-  // 통합 동기화 패킷 전송
-  function sendGameState(room, roomCode) {
-    io.to(roomCode).emit('sync_game_state', {
-      dice: room.gameState.dice,
-      keep: room.gameState.keep,
-      rollsLeft: room.gameState.rollsLeft,
-      turnIndex: room.gameState.turnIndex,
-      round: room.gameState.round
-    });
-  }
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ==========================================
-// 💡 요트 다이스 정밀 점수 판정 엔진
-// ==========================================
+// 실시간 게임 룸 관리 객체
+const rooms = {};
+
+// 요트 다이스 족보 점수 계산 로직 (서버측 타임아웃 자동 기입용)
 function calculateScore(category, dice) {
-  const counts = Array(7).fill(0);
-  let sum = 0;
-  dice.forEach(val => {
-    counts[val]++;
-    sum += val;
-  });
+    const counts = Array(7).fill(0);
+    let sum = 0;
+    dice.forEach(d => {
+        counts[d]++;
+        sum += d;
+    });
 
-  switch (category) {
-    case 'ace': return counts[1] * 1;
-    case 'dual': return counts[2] * 2;
-    case 'triple': return counts[3] * 3;
-    case 'quad': return counts[4] * 4;
-    case 'penta': return counts[5] * 5;
-    case 'hexa': return counts[6] * 6;
-    case 'choice': return sum;
-
-    case 'poker': // 포 오브 어 카인드 (동일 눈 4개 이상)
-      for (let i = 1; i <= 6; i++) {
-        if (counts[i] >= 4) return i * 4;
-      }
-      return 0;
-
-    case 'fullhouse': // 풀하우스 (3개 + 2개)
-      let hasThree = false;
-      let hasTwo = false;
-      let tripleVal = 0;
-      let doubleVal = 0;
-      for (let i = 1; i <= 6; i++) {
-        if (counts[i] === 3) { hasThree = true; tripleVal = i; }
-        if (counts[i] === 2) { hasTwo = true; doubleVal = i; }
-        if (counts[i] === 5) { hasThree = true; hasTwo = true; } // 요트는 풀하우스 상위호환 인정
-      }
-      return (hasThree && hasTwo) ? sum : 0;
-
-    case 's_straight': // 스몰 스트레이트 (4개 연속, 15점 고정)
-      const uniqueDice = [...new Set(dice)].sort();
-      const str = uniqueDice.join('');
-      if (str.includes('1234') || str.includes('2345') || str.includes('3456')) {
-        return 15;
-      }
-      return 0;
-
-    case 'l_straight': // 라지 스트레이트 (5개 연속, 30점 고정)
-      const sortedStr = [...dice].sort().join('');
-      if (sortedStr === '12345' || sortedStr === '23456') {
-        return 30;
-      }
-      return 0;
-
-    case 'yacht': // 요트 (5개 동일, 50점 고정)
-      for (let i = 1; i <= 6; i++) {
-        if (counts[i] === 5) return 50;
-      }
-      return 0;
-
-    default: return 0;
-  }
+    switch (category) {
+        case 'ones': return counts[1] * 1;
+        case 'twos': return counts[2] * 2;
+        case 'threes': return counts[3] * 3;
+        case 'fours': return counts[4] * 4;
+        case 'fives': return counts[5] * 5;
+        case 'sixes': return counts[6] * 6;
+        case 'choice': return sum;
+        case 'fourOfAKind':
+            for (let i = 1; i <= 6; i++) {
+                if (counts[i] >= 4) return i * 4; // 동일 눈 4개의 합
+            }
+            return 0;
+        case 'fullHouse':
+            let hasThree = false;
+            let hasTwo = false;
+            let threeVal = 0, twoVal = 0;
+            for (let i = 1; i <= 6; i++) {
+                if (counts[i] === 3) { hasThree = true; threeVal = i; }
+                if (counts[i] === 2) { hasTwo = true; twoVal = i; }
+                if (counts[i] === 5) { hasThree = true; hasTwo = true; threeVal = i; twoVal = i; }
+            }
+            return (hasThree && hasTwo) ? (threeVal * 3 + twoVal * 2) : 0;
+        case 'smallStraight':
+            const uniqueStr = Object.keys(counts).filter(k => counts[k] > 0).join('');
+            if (/1.*2.*3.*4|2.*3.*4.*5|3.*4.*5.*6/.test(uniqueStr)) return 15;
+            return 0;
+        case 'largeStraight':
+            const uniqueLStr = Object.keys(counts).filter(k => counts[k] > 0).join('');
+            if (/1.*2.*3.*4.*5|2.*3.*4.*5.*6/.test(uniqueLStr)) return 30;
+            return 0;
+        case 'yacht':
+            for (let i = 1; i <= 6; i++) {
+                if (counts[i] === 5) return 50;
+            }
+            return 0;
+        default: return 0;
+    }
 }
 
-// 도파민 연출 트리거 분석 엔진
-function checkSpecialEffects(category, score, dice) {
-  if (category === 'yacht' && score === 50) return 'yacht_boom';
-  if (category === 'fullhouse' && score >= 27) return 'fullhouse_epic'; // 66655, 66555 등 대박
-  
-  // 포커나 눈 더해서 상단 보너스 채우는 고득점 달성 시 이펙트 (4개 이상 동일)
-  const counts = Array(7).fill(0);
-  dice.forEach(val => counts[val]++);
-  for (let i = 1; i <= 6; i++) {
-    if (counts[i] >= 4) return 'quad_nice';
-  }
-  return 'none';
+// AI가 타임아웃 시 최적의 점수 기입 칸을 계산
+function getBestCategory(scoreBoard, dice) {
+    const categories = [
+        'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
+        'choice', 'fourOfAKind', 'fullHouse', 'smallStraight', 'largeStraight', 'yacht'
+    ];
+    let bestCat = null;
+    let maxScore = -1;
+
+    categories.forEach(cat => {
+        if (scoreBoard[cat] === null) {
+            const score = calculateScore(cat, dice);
+            if (score > maxScore) {
+                maxScore = score;
+                bestCat = cat;
+            }
+        }
+    });
+
+    // 만약 빈 곳이 있다면 점수가 0점이라도 아무 곳이나 선택
+    if (!bestCat) {
+        bestCat = categories.find(cat => scoreBoard[cat] === null);
+    }
+    return { category: bestCat, score: maxScore >= 0 ? maxScore : 0 };
 }
+
+io.on('connection', (socket) => {
+    let currentRoomId = null;
+    let myNickname = '알 수 없음';
+
+    // 방 만들기/조인
+    socket.on('joinRoom', ({ roomId, nickname }) => {
+        currentRoomId = roomId;
+        myNickname = nickname;
+        socket.join(roomId);
+
+        if (!rooms[roomId]) {
+            rooms[roomId] = {
+                id: roomId,
+                players: [],
+                status: 'waiting', // waiting, card_draw, playing, finished
+                cards: [], // 순서 결정용 무광 블랙 카드들
+                drawCount: 0,
+                turnIndex: 0,
+                dice: [1, 1, 1, 1, 1],
+                kept: [false, false, false, false, false],
+                rollsLeft: 3,
+                shakeProgress: 0,
+                timer: null,
+                timeLeft: 45
+            };
+        }
+
+        const room = rooms[roomId];
+        
+        // 중복 참여 방지 및 재접속 처리
+        const existingPlayer = room.players.find(p => p.id === socket.id);
+        if (!existingPlayer && room.status === 'waiting') {
+            room.players.push({
+                id: socket.id,
+                nickname: nickname,
+                order: null,
+                scoreBoard: {
+                    ones: null, twos: null, threes: null, fours: null, fives: null, sixes: null,
+                    choice: null, fourOfAKind: null, fullHouse: null, smallStraight: null, largeStraight: null, yacht: null
+                },
+                bonusEligible: false,
+                totalScore: 0
+            });
+        }
+
+        io.to(roomId).emit('roomUpdate', {
+            players: room.players,
+            status: room.status,
+            cards: room.cards
+        });
+    });
+
+    // 게임 시작 (카드 뽑기 진입)
+    socket.on('startGame', () => {
+        const room = rooms[currentRoomId];
+        if (!room || room.status !== 'waiting') return;
+
+        if (room.players.length === 1) {
+            // 혼자 할 때는 카드 뽑기 생략하고 바로 시작
+            room.status = 'playing';
+            room.players[0].order = 1;
+            startTurn(currentRoomId);
+        } else {
+            // 멀티플레이어는 무광 검정 카드 뽑기 단계 개시
+            room.status = 'card_draw';
+            room.drawCount = 0;
+            // 인원수만큼 1~n 순서 번호 생성 후 셔플
+            const orders = Array.from({ length: room.players.length }, (_, i) => i + 1);
+            for (let i = orders.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [orders[i], orders[j]] = [orders[j], orders[i]];
+            }
+
+            room.cards = orders.map((orderNum, idx) => ({
+                id: idx,
+                orderNum: orderNum,
+                revealed: false,
+                drawnBy: null
+            }));
+
+            io.to(currentRoomId).emit('startCardDraw', {
+                players: room.players,
+                cards: room.cards
+            });
+        }
+    });
+
+    // 카드 뽑기 클릭
+    socket.on('drawCard', (cardId) => {
+        const room = rooms[currentRoomId];
+        if (!room || room.status !== 'card_draw') return;
+
+        const card = room.cards.find(c => c.id === cardId);
+        const player = room.players.find(p => p.id === socket.id);
+
+        if (card && !card.revealed && player && player.order === null) {
+            card.revealed = true;
+            card.drawnBy = player.nickname;
+            player.order = card.orderNum;
+            room.drawCount++;
+
+            io.to(currentRoomId).emit('cardRevealed', {
+                cards: room.cards,
+                playerId: socket.id,
+                order: card.orderNum
+            });
+
+            // 모든 플레이어가 카드를 다 뽑았으면 정렬 후 게임 개시
+            if (room.drawCount === room.players.length) {
+                room.players.sort((a, b) => a.order - b.order);
+                setTimeout(() => {
+                    room.status = 'playing';
+                    startTurn(currentRoomId);
+                }, 2000); // 2초 뒤에 족보판 활성화
+            }
+        }
+    });
+
+    // 턴 시작 및 타이머 가동 함수
+    function startTurn(roomId) {
+        const room = rooms[roomId];
+        if (!room) return;
+
+        clearInterval(room.timer);
+        room.rollsLeft = 3;
+        room.dice = [1, 1, 1, 1, 1];
+        room.kept = [true, true, true, true, true]; // 초기 상태는 컵 안에 들어가 있으므로 전부 홀드 취급 (롤 불가능한 컵 내부 보관 상태)
+        room.shakeProgress = 0;
+        room.timeLeft = 45;
+
+        const activePlayer = room.players[room.turnIndex];
+
+        io.to(roomId).emit('turnStarted', {
+            activePlayerId: activePlayer.id,
+            turnIndex: room.turnIndex,
+            rollsLeft: room.rollsLeft,
+            dice: room.dice,
+            kept: room.kept,
+            timeLeft: room.timeLeft
+        });
+
+        // 45초 타이머 구동
+        room.timer = setInterval(() => {
+            room.timeLeft--;
+            io.to(roomId).emit('timerTick', room.timeLeft);
+
+            if (room.timeLeft <= 0) {
+                clearInterval(room.timer);
+                autoSelectCategory(roomId);
+            }
+        }, 1000);
+    }
+
+    // 시간 초과 시 자동으로 최적의 기댓값 족보에 0점 혹은 점수 강제 기입
+    function autoSelectCategory(roomId) {
+        const room = rooms[roomId];
+        if (!room) return;
+
+        const activePlayer = room.players[room.turnIndex];
+        // 컵에 안 빼낸 주사위가 있으면 전부 꺼내진 필드 주사위로 간주해 계산
+        const { category, score } = getBestCategory(activePlayer.scoreBoard, room.dice);
+
+        activePlayer.scoreBoard[category] = score;
+        
+        // 보너스 및 점수 정산
+        updateTotalScore(activePlayer);
+
+        io.to(roomId).emit('scoreSelected', {
+            playerId: activePlayer.id,
+            scoreBoard: activePlayer.scoreBoard,
+            totalScore: activePlayer.totalScore,
+            category: category,
+            score: score,
+            isTimeout: true
+        });
+
+        nextTurn(roomId);
+    }
+
+    // 다음 턴 교대 또는 종료 체크
+    function nextTurn(roomId) {
+        const room = rooms[roomId];
+        if (!room) return;
+
+        clearInterval(room.timer);
+
+        // 전체 플레이어가 12개 칸을 모두 채웠는지 검사
+        const isGameOver = room.players.every(p => 
+            Object.values(p.scoreBoard).every(val => val !== null)
+        );
+
+        if (isGameOver) {
+            room.status = 'finished';
+            // 총점순 내림차순 정렬
+            room.players.sort((a, b) => b.totalScore - a.totalScore);
+            io.to(roomId).emit('gameOver', room.players);
+        } else {
+            room.turnIndex = (room.turnIndex + 1) % room.players.length;
+            startTurn(roomId);
+        }
+    }
+
+    // 총점 및 보너스 점수(63점 돌파 시 +35점) 계산
+    function updateTotalScore(player) {
+        const upperCategories = ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'];
+        let upperSum = 0;
+        let lowerSum = 0;
+
+        upperCategories.forEach(cat => {
+            upperSum += (player.scoreBoard[cat] || 0);
+        });
+
+        if (upperSum >= 63) {
+            player.bonusEligible = true;
+        }
+
+        Object.keys(player.scoreBoard).forEach(cat => {
+            if (!upperCategories.includes(cat)) {
+                lowerSum += (player.scoreBoard[cat] || 0);
+            }
+        });
+
+        player.totalScore = upperSum + lowerSum + (player.bonusEligible ? 35 : 0);
+    }
+
+    // 통에 주사위 넣기
+    socket.on('putDiceInCup', () => {
+        const room = rooms[currentRoomId];
+        if (!room) return;
+
+        // 리롤 횟수가 남아있는 경우에만
+        if (room.rollsLeft > 0) {
+            // 필드에 꺼내져서 홀드(홈)되지 않은 주사위들을 모두 컵(홀드 상태 true) 속으로 수납
+            room.kept = room.kept.map(() => true);
+            room.shakeProgress = 0;
+
+            io.to(currentRoomId).emit('dicePutInCup', {
+                kept: room.kept
+            });
+        }
+    });
+
+    // 실시간 드래그 컵 흔들기 동기화
+    socket.on('shakeCup', (progressDelta) => {
+        const room = rooms[currentRoomId];
+        if (!room) return;
+
+        room.shakeProgress = Math.min(100, room.shakeProgress + progressDelta);
+        io.to(currentRoomId).emit('cupShaking', {
+            shakeProgress: room.shakeProgress,
+            shakerNickname: myNickname
+        });
+    });
+
+    // 흔들기 완료 후 주사위 쏟아내기 (리롤 결과 롤링)
+    socket.on('rollDice', () => {
+        const room = rooms[currentRoomId];
+        if (!room || room.rollsLeft <= 0) return;
+
+        room.rollsLeft--;
+
+        // 컵(kept) 상태인 주사위(즉 리롤 대상)들만 완전히 무작위 눈 생성
+        for (let i = 0; i < 5; i++) {
+            if (room.kept[i]) {
+                room.dice[i] = Math.floor(Math.random() * 6) + 1;
+            }
+        }
+
+        // 굴러 떨어진 직후는 모두 드롭 존(필드)으로 나와 홀드가 해제(false)된 상태
+        room.kept = [false, false, false, false, false];
+        room.shakeProgress = 0;
+
+        io.to(currentRoomId).emit('diceRolled', {
+            dice: room.dice,
+            kept: room.kept,
+            rollsLeft: room.rollsLeft
+        });
+    });
+
+    // 주사위를 홀드 홈 ↔ 필드 전환 (드래그/클릭 이동)
+    socket.on('toggleKeep', (index) => {
+        const room = rooms[currentRoomId];
+        if (!room) return;
+
+        // 현재 플레이어의 턴일 때만 조작 허용
+        const activePlayer = room.players[room.turnIndex];
+        if (activePlayer.id !== socket.id) return;
+
+        room.kept[index] = !room.kept[index];
+        io.to(currentRoomId).emit('keepUpdated', room.kept);
+    });
+
+    // 족보 점수 기록 확정
+    socket.on('selectCategory', (category) => {
+        const room = rooms[currentRoomId];
+        if (!room || room.status !== 'playing') return;
+
+        const activePlayer = room.players[room.turnIndex];
+        if (activePlayer.id !== socket.id) return; // 본인 턴 검증
+
+        if (activePlayer.scoreBoard[category] !== null) return; // 이미 채워진 칸
+
+        // 점수 계산 (홈에 있던 필드에 있던 모든 최종 5개 주사위 기준)
+        const score = calculateScore(category, room.dice);
+        activePlayer.scoreBoard[category] = score;
+
+        updateTotalScore(activePlayer);
+
+        io.to(currentRoomId).emit('scoreSelected', {
+            playerId: socket.id,
+            scoreBoard: activePlayer.scoreBoard,
+            totalScore: activePlayer.totalScore,
+            category: category,
+            score: score,
+            isTimeout: false
+        });
+
+        nextTurn(currentRoomId);
+    });
+
+    // 방 나가기 및 연결 끊김 대응
+    socket.on('disconnect', () => {
+        if (!currentRoomId || !rooms[currentRoomId]) return;
+
+        const room = rooms[currentRoomId];
+        const playerIndex = room.players.findIndex(p => p.id === socket.id);
+
+        if (playerIndex !== -1) {
+            // 중도 퇴장해도 턴이 유지되고 방은 터지지 않음 (기획 사항 반영)
+            console.log(`${myNickname} 퇴장.`);
+            if (room.players.length === 1) {
+                clearInterval(room.timer);
+                delete rooms[currentRoomId];
+            } else {
+                // 게임 중 퇴장 시, 해당 유저의 턴이면 자동 스킵 처리 후 다음 턴
+                if (room.status === 'playing' && room.turnIndex === playerIndex) {
+                    nextTurn(currentRoomId);
+                }
+                room.players.splice(playerIndex, 1);
+                // 턴 인덱스 동기화 보정
+                if (room.turnIndex >= room.players.length) {
+                    room.turnIndex = 0;
+                }
+                io.to(currentRoomId).emit('roomUpdate', {
+                    players: room.players,
+                    status: room.status,
+                    cards: room.cards
+                });
+            }
+        }
+    });
+});
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`요트 다이스 서버 오픈! 포트: ${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
