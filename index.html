@@ -3,22 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yacht Dice</title>
+    <title>Yacht Dice - 프리미엄 요트다이스</title>
     <script src="/socket.io/socket.io.js"></script>
-    <!-- 도파민 폭죽 이펙트용 오픈소스 라이브러리 탑재 -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
             --bg-color: #121212;
             --surface-color: #1e1e1e;
-            --surface-hover: #2d2d2d;
+            --surface-hover: #262626;
             --accent-gold: #d4af37;
             --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
             --text-primary: #ffffff;
-            --text-secondary: #b3b3b3;
-            --matte-black: #1a1a1a;
+            --text-secondary: #aaaaaa;
             --border-color: #333333;
+            --board-border: #444444;
+            --plate-wood: #2c1d11;
+            --felt-red: #8b1e1e;
+            --matte-black: #181818;
         }
 
         * {
@@ -26,79 +27,71 @@
             margin: 0;
             padding: 0;
             user-select: none;
-            -webkit-user-drag: none;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-primary);
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
-            overflow-x: hidden;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            padding: 20px;
         }
 
-        /* 공통 버튼 */
         button {
-            background-color: var(--surface-color);
-            color: var(--text-primary);
+            background-color: var(--matte-black);
+            color: white;
             border: 1px solid var(--border-color);
             padding: 12px 24px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
+
         button:hover {
-            background-color: var(--surface-hover);
             border-color: var(--accent-gold);
+            background-color: var(--surface-hover);
         }
+
         button:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
             border-color: var(--border-color);
         }
 
-        /* 1. 대기 화면 및 카드 뽑기 */
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            padding: 20px;
-        }
-
-        #lobby-screen {
+        /* 로비 화면 */
+        .lobby-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            text-align: center;
             gap: 24px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
         }
 
         .title-logo {
-            font-size: 48px;
-            font-weight: 800;
+            font-size: 42px;
+            font-weight: 900;
             letter-spacing: 2px;
             background: linear-gradient(135deg, #ffffff, #888888);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
         }
 
         .lobby-box {
             background-color: var(--surface-color);
             border: 1px solid var(--border-color);
-            padding: 40px;
-            border-radius: 16px;
+            padding: 30px;
+            border-radius: 12px;
             width: 100%;
-            max-width: 450px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
         }
 
         .input-group {
@@ -109,8 +102,9 @@
         }
 
         .input-group label {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-secondary);
+            font-weight: 600;
         }
 
         .input-group input {
@@ -118,8 +112,8 @@
             border: 1px solid var(--border-color);
             color: white;
             padding: 12px;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 6px;
+            font-size: 15px;
             outline: none;
         }
 
@@ -127,115 +121,130 @@
             border-color: var(--accent-gold);
         }
 
-        /* 플레이어 리스트 */
-        .player-list {
-            margin-top: 20px;
+        .btn-row {
             display: flex;
-            flex-wrap: wrap;
             gap: 12px;
-            justify-content: center;
         }
 
-        .player-tag {
-            background-color: var(--matte-black);
+        .btn-row button {
+            flex: 1;
+        }
+
+        /* 대기방 상태 */
+        #waiting-room {
+            display: none;
+            width: 100%;
+            background-color: var(--surface-color);
             border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
+            padding: 24px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .player-list {
+            margin: 15px 0;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 8px;
         }
 
-        /* 2. 카드 드로우 화면 */
+        .player-badge {
+            background-color: var(--matte-black);
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 순서 결정 카드 뽑기 */
         #card-screen {
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 30px;
+            gap: 24px;
             text-align: center;
         }
 
-        .card-container {
+        .card-grid {
             display: flex;
-            gap: 20px;
+            gap: 16px;
             flex-wrap: wrap;
             justify-content: center;
-            perspective: 1000px;
-            margin-top: 40px;
+            margin-top: 20px;
         }
 
-        .matte-card {
-            width: 140px;
-            height: 210px;
-            background: linear-gradient(145deg, #1f1f1f, #111111);
-            border: 2px solid #222222;
-            border-radius: 12px;
+        .black-card {
+            width: 110px;
+            height: 160px;
+            background: linear-gradient(135deg, #1f1f1f, #0d0d0d);
+            border: 2px solid #282828;
+            border-radius: 8px;
             cursor: pointer;
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
 
-        .matte-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            border-color: #444444;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.8);
+        .black-card:hover {
+            transform: translateY(-8px);
+            border-color: #555555;
         }
 
-        .matte-card.flipped {
+        .black-card.flipped {
             transform: rotateY(180deg);
         }
 
-        .card-front, .card-back {
+        .card-side {
             position: absolute;
             width: 100%;
             height: 100%;
             backface-visibility: hidden;
-            border-radius: 10px;
+            border-radius: 6px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
         }
 
-        .card-back {
-            background: radial-gradient(circle, #2a2a2a 20%, #111111 80%);
-            border: 4px solid #1a1a1a;
+        .side-back {
+            background: radial-gradient(circle, #222222 10%, #0d0d0d 90%);
         }
 
-        .card-back::after {
-            content: '?';
-            font-size: 48px;
-            font-weight: 800;
-            color: #333333;
+        .side-back::after {
+            content: 'Y';
+            font-size: 32px;
+            font-weight: 900;
+            color: #2e2e2e;
         }
 
-        .card-front {
+        .side-front {
             background-color: var(--surface-color);
             transform: rotateY(180deg);
             border: 2px solid var(--accent-gold);
         }
 
-        .card-front .number {
-            font-size: 56px;
-            font-weight: 800;
+        .side-front .num {
+            font-size: 40px;
+            font-weight: 900;
             color: var(--accent-gold);
         }
 
-        .card-front .owner {
-            font-size: 12px;
+        .side-front .name {
+            font-size: 11px;
             color: var(--text-secondary);
-            margin-top: 10px;
+            margin-top: 4px;
         }
 
-        /* 3. 게임 메인 레이아웃 */
+        /* 본 플레이 레이아웃 */
         #game-screen {
             display: none;
-            grid-template-columns: 1fr 350px;
-            gap: 20px;
+            grid-template-columns: 1fr 500px;
+            gap: 24px;
             width: 100%;
+            max-width: 1240px;
         }
 
         /* 왼쪽 플레이 보드 */
@@ -245,320 +254,325 @@
             gap: 20px;
         }
 
-        /* 최상단 프로필 바 */
+        /* 프로필 바 */
         .profiles-bar {
             display: flex;
-            gap: 12px;
-            background-color: var(--surface-color);
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
+            gap: 10px;
             overflow-x: auto;
         }
 
-        .profile-card {
-            background-color: var(--matte-black);
+        .profile-badge {
+            background-color: var(--surface-color);
             border: 1px solid var(--border-color);
+            padding: 10px 16px;
             border-radius: 8px;
-            padding: 10px 20px;
+            min-width: 110px;
+            text-align: center;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            min-width: 120px;
+            gap: 4px;
             position: relative;
         }
 
-        .profile-card.active {
+        .profile-badge.active {
             border-color: var(--accent-gold);
-            box-shadow: 0 0 10px rgba(212,175,55,0.3);
+            box-shadow: 0 0 10px rgba(212,175,55,0.25);
         }
 
-        .profile-card.active::before {
+        .profile-badge.active::before {
             content: 'TURN';
             position: absolute;
             top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
             background-color: var(--accent-gold);
             color: black;
-            font-size: 10px;
-            font-weight: 800;
-            padding: 2px 8px;
+            font-size: 9px;
+            font-weight: 900;
+            padding: 1px 6px;
             border-radius: 10px;
         }
 
-        /* 타이머 정보 */
-        .timer-badge {
-            background-color: #ef4444;
-            color: white;
-            font-weight: bold;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        /* 주사위 홈(Hold) & 필드(Roll) 구역 */
-        .board-plate {
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
+        /* 보드게임 판 구현 (요트다이스 물리 보드 형태) */
+        .dice-tray {
+            background-color: var(--plate-wood);
+            border: 12px solid #1a100a;
             border-radius: 16px;
-            padding: 30px;
+            padding: 16px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
-            gap: 30px;
-            position: relative;
+            gap: 16px;
         }
 
-        /* 홀드 홈 구역 */
-        .hold-home-zone {
-            border: 2px dashed #444444;
-            background-color: rgba(0,0,0,0.2);
-            border-radius: 12px;
-            padding: 15px;
-            min-height: 130px;
+        /* 상단 홈 (보관용 구멍 5개 분리 구조) */
+        .hold-tray-top {
+            background-color: #1a110a;
+            border-radius: 8px;
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            min-height: 100px;
+        }
+
+        .hold-slot {
+            background-color: #0c0805;
+            border: 2px solid #2d1d11;
+            border-radius: 10px;
+            height: 80px;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
             position: relative;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.8);
         }
 
-        .hold-home-zone::after {
-            content: 'HOLD ZONE (보관 홈)';
+        .hold-slot::before {
+            content: 'HOLD';
             position: absolute;
-            top: 10px;
-            left: 15px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #555555;
-            letter-spacing: 1px;
-        }
-
-        /* 컵(통) 및 흔들기 인터랙션 구역 */
-        .shaking-plate {
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            background-color: var(--matte-black);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid var(--border-color);
-        }
-
-        .dice-cup-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .dice-cup {
-            width: 100px;
-            height: 120px;
-            background: linear-gradient(145deg, #2a2a2a, #151515);
-            border: 2px solid #333333;
-            border-radius: 12px 12px 40px 40px;
-            position: relative;
-            cursor: grab;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: transform 0.1s ease;
-        }
-
-        .dice-cup.shaking {
-            animation: shakeCupAnim 0.15s infinite;
-        }
-
-        @keyframes shakeCupAnim {
-            0% { transform: translate(3px, 5px) rotate(5deg); }
-            50% { transform: translate(-3px, -5px) rotate(-5deg); }
-            100% { transform: translate(2px, 4px) rotate(3deg); }
-        }
-
-        .cup-lid {
-            position: absolute;
-            top: 0;
-            width: 100%;
-            height: 10px;
-            background-color: var(--accent-gold);
-            border-radius: 12px 12px 0 0;
-        }
-
-        .cup-label {
-            font-size: 11px;
-            font-weight: bold;
-            color: var(--text-secondary);
-        }
-
-        /* 필드 (Roll Zone) */
-        .roll-field-zone {
-            background-color: #161616;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            min-height: 160px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            position: relative;
-            padding: 20px;
-        }
-
-        .roll-field-zone::after {
-            content: 'ROLL FIELD (필드)';
-            position: absolute;
-            top: 10px;
-            left: 15px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #555555;
-            letter-spacing: 1px;
-        }
-
-        /* 주사위 컴포넌트 */
-        .dice {
-            width: 70px;
-            height: 70px;
-            background-color: white;
-            color: black;
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 36px;
+            bottom: 4px;
+            font-size: 9px;
             font-weight: 800;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            color: #26190f;
+            letter-spacing: 0.5px;
+        }
+
+        /* 하단 주사위 필드 (빨간색 벨벳) */
+        .roll-field-felt {
+            background-color: var(--felt-red);
+            background-image: radial-gradient(circle, #aa2424, #661212);
+            border: 4px solid #1a110a;
+            border-radius: 10px;
+            min-height: 240px;
             position: relative;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: inset 0 6px 15px rgba(0,0,0,0.7);
+        }
+
+        /* 주사위 눈 컴포넌트 */
+        .dice {
+            width: 56px;
+            height: 56px;
+            background-color: #ffffff;
+            color: #000000;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 -4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .dice:hover {
-            transform: scale(1.08);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+            transform: scale(1.08) translateY(-2px);
         }
 
-        /* 주사위 도트 스타일 디자인 */
         .dice-dots {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            width: 46px;
-            height: 46px;
+            width: 38px;
+            height: 38px;
         }
 
         .dot {
             background-color: #121212;
             border-radius: 50%;
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             margin: auto;
             visibility: hidden;
         }
 
-        /* 주사위 눈별 도트 패턴 제어 */
-        .dice[data-val="1"] .dot:nth-child(5) { visibility: visible; background-color: #ef4444; width: 12px; height: 12px; }
+        /* 주사위 패턴 제어 */
+        .dice[data-val="1"] .dot:nth-child(5) { visibility: visible; background-color: #d32f2f; width: 11px; height: 11px; }
         .dice[data-val="2"] .dot:nth-child(1), .dice[data-val="2"] .dot:nth-child(9) { visibility: visible; }
         .dice[data-val="3"] .dot:nth-child(1), .dice[data-val="3"] .dot:nth-child(5), .dice[data-val="3"] .dot:nth-child(9) { visibility: visible; }
         .dice[data-val="4"] .dot:nth-child(1), .dice[data-val="4"] .dot:nth-child(3), .dice[data-val="4"] .dot:nth-child(7), .dice[data-val="4"] .dot:nth-child(9) { visibility: visible; }
         .dice[data-val="5"] .dot:nth-child(1), .dice[data-val="5"] .dot:nth-child(3), .dice[data-val="5"] .dot:nth-child(5), .dice[data-val="5"] .dot:nth-child(7), .dice[data-val="5"] .dot:nth-child(9) { visibility: visible; }
         .dice[data-val="6"] .dot:nth-child(1), .dice[data-val="6"] .dot:nth-child(3), .dice[data-val="6"] .dot:nth-child(4), .dice[data-val="6"] .dot:nth-child(6), .dice[data-val="6"] .dot:nth-child(7), .dice[data-val="6"] .dot:nth-child(9) { visibility: visible; }
 
-        /* 게이지 바 */
-        .gauge-container {
+        /* 주사위 통(컵) 컨트롤러 인터페이스 */
+        .cup-interface {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .cup-shaker-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 무광 검정 세련된 주사위 컵 */
+        .matte-cup {
+            width: 80px;
+            height: 100px;
+            background: linear-gradient(145deg, #252525, #0d0d0d);
+            border: 2px solid #222222;
+            border-radius: 10px 10px 30px 30px;
+            cursor: grab;
+            position: relative;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .matte-cup.shaking {
+            animation: shake 0.12s infinite;
+        }
+
+        @keyframes shake {
+            0% { transform: translate(3px, 3px) rotate(4deg); }
+            50% { transform: translate(-3px, -3px) rotate(-4deg); }
+            100% { transform: translate(2px, 2px) rotate(2deg); }
+        }
+
+        .cup-lip {
+            position: absolute;
+            top: 0;
             width: 100%;
             height: 8px;
-            background-color: #333;
-            border-radius: 4px;
+            background-color: var(--accent-gold);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .gauge-bar {
+            width: 90px;
+            height: 6px;
+            background-color: #2b2b2b;
+            border-radius: 3px;
             overflow: hidden;
-            margin-top: 5px;
         }
 
         .gauge-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--accent-blue), var(--accent-gold));
             width: 0%;
-            transition: width 0.1s;
         }
 
-        /* 4. 점수표 (우측 레이아웃) */
-        .scoreboard-panel {
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
+        /* 족보 기입판 (실물 점수표 양식 완벽 구현) */
+        .scoreboard-container {
+            background-color: #f4f3f0;
+            color: #1c1a17;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border: 4px solid #dddbd5;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 12px;
         }
 
-        .scoreboard-title {
-            font-size: 20px;
-            font-weight: 700;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
+        .score-header-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 2px solid #3c3a35;
+            padding-bottom: 8px;
         }
 
-        .board-table {
+        .board-title-logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            color: #1c1a17;
+        }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .yacht-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 13px;
         }
 
-        .board-table th, .board-table td {
-            padding: 10px 8px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
+        .yacht-table th, .yacht-table td {
+            border: 1px solid #b8b6b0;
+            padding: 6px 4px;
+            text-align: center;
+        }
+
+        .yacht-table th {
+            background-color: #e5e3dd;
+            color: #3c3a35;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .category-name-cell {
+            text-align: left !important;
+            font-weight: 800;
+            background-color: #ecebe6;
+            color: #2a2924;
+            padding-left: 8px !important;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .category-name-cell img, .category-name-cell span.icon {
             font-size: 14px;
         }
 
-        .board-table th {
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .score-row {
+        .score-input-cell {
+            font-weight: 700;
             cursor: pointer;
-            transition: background-color 0.1s;
+            font-size: 14px;
+            transition: background-color 0.15s;
+            min-width: 65px;
         }
 
-        .score-row:hover:not(.filled) {
-            background-color: var(--surface-hover);
+        .score-input-cell:hover:not(.filled):not(.disabled-click) {
+            background-color: #dfddd6;
         }
 
-        .score-row.filled {
-            cursor: not-allowed;
+        .score-input-cell.empty {
+            color: #b0aeaa;
+            font-weight: 400;
         }
 
-        .score-cell {
-            text-align: right;
-            font-weight: bold;
-            font-size: 16px;
+        .score-input-cell.preview {
+            color: #3b82f6;
+            font-weight: 700;
+            background-color: rgba(59, 130, 246, 0.08);
         }
 
-        .score-cell.empty {
-            color: #555555;
+        .score-input-cell.filled {
+            color: #1c1a17;
+            background-color: #ffffff;
         }
 
-        .score-cell.filled {
-            color: var(--text-primary);
-        }
-
-        .score-cell.preview {
-            color: rgba(255, 255, 255, 0.35);
-        }
-
-        /* 보너스 및 결과 칸 특별 스타일 */
-        .bonus-row {
-            background-color: rgba(212,175,55,0.05);
-        }
-        .total-row {
-            background-color: rgba(255,255,255,0.05);
+        /* 합계, 보너스 행 */
+        .special-row td {
+            background-color: #e3e1da !important;
             font-weight: 800;
-            font-size: 18px;
+            color: #1c1a17;
+        }
+
+        .total-score-row td {
+            background-color: #2c2a24 !important;
+            color: #ffffff !important;
+            font-weight: 900;
+            font-size: 15px;
         }
 
         /* 모달 팝업 */
@@ -566,8 +580,8 @@
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -576,162 +590,179 @@
         .modal-content {
             background-color: var(--surface-color);
             border: 1px solid var(--border-color);
-            padding: 30px;
-            border-radius: 16px;
+            padding: 24px;
+            border-radius: 12px;
             width: 100%;
-            max-width: 400px;
+            max-width: 380px;
             text-align: center;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            gap: 16px;
         }
 
-        /* 랭킹 최종 종료 화면 */
+        /* 게임종료 화면 */
         #gameover-screen {
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 24px;
-            text-align: center;
+            gap: 20px;
         }
 
-        .ranking-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 100%;
-            max-width: 500px;
-        }
-
-        .ranking-item {
+        .rank-box {
             background-color: var(--surface-color);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 16px 24px;
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 450px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 18px;
+            flex-direction: column;
+            gap: 10px;
         }
 
-        .ranking-item.winner {
+        .rank-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-radius: 6px;
+            background-color: var(--matte-black);
+            border: 1px solid var(--border-color);
+        }
+
+        .rank-row.winner {
             border-color: var(--accent-gold);
-            background: linear-gradient(135deg, rgba(212,175,55,0.1), transparent);
+            background: linear-gradient(90deg, rgba(212,175,55,0.1), transparent);
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div style="width: 100%; display: flex; justify-content: center;">
+        
         <!-- 1. 대기 및 방 접속 화면 -->
-        <div id="lobby-screen">
+        <div id="lobby-screen" class="lobby-container">
             <div>
                 <h1 class="title-logo">YACHT DICE</h1>
-                <p style="color: var(--text-secondary)">세련된 무광 다크 테마의 실시간 요트 다이스</p>
+                <p style="color: var(--text-secondary); margin-top: 4px;">정통 보드게임 레이아웃 & 족보판 완벽 재현</p>
             </div>
+            
             <div class="lobby-box">
                 <div class="input-group">
-                    <label>닉네임 설정</label>
-                    <input type="text" id="nickname-input" placeholder="플레이어 닉네임" value="플레이어1">
+                    <label>닉네임</label>
+                    <input type="text" id="nickname-input" placeholder="닉네임 입력" value="플레이어1">
                 </div>
-                <div class="input-group">
-                    <label>방 코드</label>
-                    <input type="text" id="room-input" placeholder="입장할 방 코드" value="YACHT101">
+                
+                <div class="btn-row" id="initial-btns">
+                    <button id="create-room-btn">방 만들기</button>
+                    <button id="show-join-btn">방 입장하기</button>
                 </div>
-                <button id="join-btn" style="margin-top: 10px;">접속하기</button>
+
+                <!-- 방 코드를 입력할 수 있는 필드 (방 입장하기를 클릭했을 때 나타남) -->
+                <div class="input-group" id="join-code-group" style="display: none;">
+                    <label>방 코드 (6자리 알파벳/숫자)</label>
+                    <input type="text" id="room-input" placeholder="방 코드 입력">
+                    <button id="join-confirm-btn" style="margin-top: 10px;">입장 확정</button>
+                </div>
             </div>
 
-            <!-- 대기실 상태 -->
-            <div id="room-waiting" style="display: none;">
-                <h3 id="room-title">방 코드: -</h3>
+            <!-- 대기실 구성원 리스트 -->
+            <div id="waiting-room">
+                <h3 id="room-code-title" style="color: var(--accent-gold);">대기방 코드: -</h3>
                 <div class="player-list" id="player-list"></div>
-                <button id="start-game-btn" style="margin-top: 20px;" disabled>게임 시작하기</button>
-                <p id="min-players-tip" style="color: var(--text-secondary); font-size: 12px; margin-top: 8px;">최소 1명 이상이어야 시작할 수 있습니다.</p>
+                <button id="start-game-btn" style="width: 100%; margin-top: 15px;" disabled>게임 시작</button>
+                <p id="min-players-tip" style="color: var(--text-secondary); font-size: 11px; margin-top: 6px;">최소 1인 이상일 때 시작할 수 있습니다.</p>
             </div>
         </div>
 
         <!-- 2. 순서 결정 카드 뽑기 화면 -->
         <div id="card-screen">
-            <h2>무광 검정 카드 뽑기</h2>
-            <p style="color: var(--text-secondary)">뒷면을 터치해서 1~n 순서 번호를 뽑으세요. 조작 없는 100% 독립시행입니다.</p>
-            <div class="card-container" id="card-container"></div>
+            <h2 style="color: var(--accent-gold);">순서 결정 블랙 카드 뽑기</h2>
+            <p style="color: var(--text-secondary)">원하는 무광 검정 카드를 터치해 먼저 시작할 순서를 정하세요.</p>
+            <div class="card-grid" id="card-grid"></div>
         </div>
 
-        <!-- 3. 본 플레이 화면 -->
+        <!-- 3. 본 게임 화면 -->
         <div id="game-screen">
-            <!-- 왼쪽 플레이 보드 영역 -->
+            <!-- 왼쪽: 트레이 보드 & 컵 컨트롤러 -->
             <div class="play-area">
-                <!-- 프로필 타일 목록 -->
                 <div class="profiles-bar" id="profiles-bar"></div>
 
-                <!-- 주사위 제어판 플레이트 -->
-                <div class="board-plate">
-                    <!-- 1. 홀드 홈 구역 (보관 영역) -->
-                    <div class="hold-home-zone" id="hold-home-zone"></div>
-
-                    <!-- 2. 주사위 통(컵) 흔들기 및 컨트롤 섹션 -->
-                    <div class="shaking-plate">
-                        <div class="dice-cup-container">
-                            <div class="dice-cup" id="dice-cup">
-                                <div class="cup-lid"></div>
-                            </div>
-                            <span class="cup-label">드래그해 흔들기</span>
-                            <div class="gauge-container">
-                                <div class="gauge-fill" id="shake-gauge"></div>
-                            </div>
+                <!-- 컵 및 리롤 제어 컨트롤 박스 -->
+                <div class="cup-interface">
+                    <div class="cup-shaker-box">
+                        <div class="matte-cup" id="matte-cup">
+                            <div class="cup-lip"></div>
                         </div>
-
-                        <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
-                            <div id="status-text" style="font-weight: 500;">플레이어의 차례입니다.</div>
-                            <div id="rolls-left-text" style="color: var(--text-secondary); font-size: 14px;">리롤 남음: 3 / 3</div>
-                            <div style="display: flex; gap: 10px;">
-                                <button id="put-cup-btn">통에 주사위 넣기</button>
-                                <button id="complete-turn-btn">리롤 끝내고 족보 기입</button>
-                            </div>
+                        <div class="gauge-bar">
+                            <div class="gauge-fill" id="shake-gauge"></div>
                         </div>
                     </div>
 
-                    <!-- 3. 굴려진 주사위 필드 구역 -->
-                    <div class="roll-field-zone" id="roll-field-zone"></div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                        <h4 id="status-text" style="color: var(--accent-gold);">흔들어 섞을 수 있습니다.</h4>
+                        <span id="rolls-left-text" style="font-size: 13px; color: var(--text-secondary);">리롤 남음: 3 / 3</span>
+                        <div style="display: flex; gap: 8px; margin-top: 4px;">
+                            <button id="complete-turn-btn" style="padding: 8px 16px; font-size: 13px;">리롤 중지 및 족보 결정</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 실물 나무 트레이 보드판 -->
+                <div class="dice-tray">
+                    <!-- 상단 홈: 보관 홈 (구멍 5개 분리) -->
+                    <div class="hold-tray-top" id="hold-tray-top">
+                        <!-- slots 0 ~ 4 -->
+                        <div class="hold-slot" data-index="0"></div>
+                        <div class="hold-slot" data-index="1"></div>
+                        <div class="hold-slot" data-index="2"></div>
+                        <div class="hold-slot" data-index="3"></div>
+                        <div class="hold-slot" data-index="4"></div>
+                    </div>
+
+                    <!-- 하단 주사위 필드 (빨간색 벨벳 양식) -->
+                    <div class="roll-field-felt" id="roll-field-felt"></div>
                 </div>
             </div>
 
-            <!-- 우측 스코어보드 채널 -->
-            <div class="scoreboard-panel">
-                <div class="scoreboard-title">
-                    <span>족보 기입판</span>
-                    <span id="turn-timer-badge" class="timer-badge">45초</span>
+            <!-- 오른쪽: 실물 양식 족보 기입판 -->
+            <div class="scoreboard-container">
+                <div class="score-header-bar">
+                    <span class="board-title-logo">요트다이스</span>
+                    <span id="timer-badge" class="timer-badge" style="background-color: #3c3a35; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;">45초</span>
                 </div>
-                <table class="board-table">
-                    <thead>
-                        <tr>
-                            <th>카테고리</th>
-                            <th style="text-align: right;">점수</th>
-                        </tr>
-                    </thead>
-                    <tbody id="score-tbody">
-                        <!-- 족보 카테고리 로우들이 동적으로 배치됨 -->
-                    </tbody>
-                </table>
+
+                <div class="table-scroll">
+                    <table class="yacht-table">
+                        <thead>
+                            <tr id="table-header-row">
+                                <th style="width: 160px; text-align: left; padding-left: 8px;">족보 항목</th>
+                                <!-- 플레이어 컬럼들이 동적으로 채워짐 -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-tbody">
+                            <!-- 족보 행들 -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- 4. 게임오버 최종 랭킹 화면 -->
+        <!-- 4. 최종 종료 랭킹 화면 -->
         <div id="gameover-screen">
-            <h1 style="font-size: 40px; color: var(--accent-gold);">🏆 GAME OVER 🏆</h1>
-            <p style="color: var(--text-secondary)">최종 순위 및 스코어보드</p>
-            <div class="ranking-list" id="ranking-list"></div>
-            <button id="lobby-back-btn" style="margin-top: 25px;">로비로 돌아가기</button>
+            <h1 style="font-size: 36px; color: var(--accent-gold); font-weight: 900;">🏆 GAME FINISHED 🏆</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">각 라운드가 모두 끝나 최종 순위가 결정되었습니다.</p>
+            <div class="rank-box" id="rank-box"></div>
+            <button onclick="window.location.reload();" style="margin-top: 15px;">처음으로 돌아가기</button>
         </div>
+
     </div>
 
-    <!-- 기입 의사 확인 모달 -->
+    <!-- 확인 창 모달 -->
     <div class="modal" id="confirm-modal">
         <div class="modal-content">
-            <h3 id="modal-title">점수를 기입하시겠습니까?</h3>
-            <p id="modal-desc" style="color: var(--text-secondary); font-size: 14px;"></p>
-            <div style="display: flex; justify-content: center; gap: 12px; margin-top: 10px;">
+            <h3 id="modal-title" style="color: white;">점수를 입력하시겠습니까?</h3>
+            <p id="modal-desc" style="color: var(--text-secondary); font-size: 13px;"></p>
+            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
                 <button id="modal-cancel-btn">취소</button>
                 <button id="modal-confirm-btn" style="background-color: var(--accent-blue); border-color: var(--accent-blue);">기입 확인</button>
             </div>
@@ -745,37 +776,41 @@
         let activePlayerId = null;
         let isMyTurn = false;
         let rollsLeft = 3;
-        let currentDice = [1, 1, 1, 1, 1];
-        let currentKept = [true, true, true, true, true]; // 기본 상태는 컵 보관 상태
+        let currentDice = [1, 2, 3, 4, 5];
+        let currentKept = [false, false, false, false, false]; // true: 보관홈, false: 필드
         let playersData = [];
-        let scoreBoard = {};
 
-        // DOM 요소 캡처
+        // DOM 객체 바인딩
         const lobbyScreen = document.getElementById('lobby-screen');
         const cardScreen = document.getElementById('card-screen');
         const gameScreen = document.getElementById('game-screen');
         const gameoverScreen = document.getElementById('gameover-screen');
 
-        const joinBtn = document.getElementById('join-btn');
         const nicknameInput = document.getElementById('nickname-input');
         const roomInput = document.getElementById('room-input');
-        const roomWaiting = document.getElementById('room-waiting');
-        const startBtn = document.getElementById('start-game-btn');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const showJoinBtn = document.getElementById('show-join-btn');
+        const joinCodeGroup = document.getElementById('join-code-group');
+        const joinConfirmBtn = document.getElementById('join-confirm-btn');
+        const waitingRoom = document.getElementById('waiting-room');
+        const roomCodeTitle = document.getElementById('room-code-title');
         const playerList = document.getElementById('player-list');
+        const startBtn = document.getElementById('start-game-btn');
 
-        const cardContainer = document.getElementById('card-container');
+        const cardGrid = document.getElementById('card-grid');
 
         const profilesBar = document.getElementById('profiles-bar');
-        const holdHomeZone = document.getElementById('hold-home-zone');
-        const rollFieldZone = document.getElementById('roll-field-zone');
-        const diceCup = document.getElementById('dice-cup');
+        const holdSlots = document.querySelectorAll('.hold-slot');
+        const rollFieldFelt = document.getElementById('roll-field-felt');
+        const matteCup = document.getElementById('matte-cup');
         const shakeGauge = document.getElementById('shake-gauge');
         const statusText = document.getElementById('status-text');
         const rollsLeftText = document.getElementById('rolls-left-text');
-        const putCupBtn = document.getElementById('put-cup-btn');
         const completeTurnBtn = document.getElementById('complete-turn-btn');
-        const turnTimerBadge = document.getElementById('turn-timer-badge');
-        const scoreTbody = document.getElementById('score-tbody');
+        const timerBadge = document.getElementById('timer-badge');
+
+        const tableHeaderRow = document.getElementById('table-header-row');
+        const tableTbody = document.getElementById('table-tbody');
 
         const confirmModal = document.getElementById('confirm-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -783,76 +818,95 @@
         const modalConfirmBtn = document.getElementById('modal-confirm-btn');
         const modalCancelBtn = document.getElementById('modal-cancel-btn');
 
-        const rankingList = document.getElementById('ranking-list');
-        const lobbyBackBtn = document.getElementById('lobby-back-btn');
+        const rankBox = document.getElementById('rank-box');
 
-        // 컵 드래그 흔들기 변수
-        let isDraggingCup = false;
-        let lastX = 0;
-        let shakeProgress = 0;
-
-        // 족보 정의
-        const categories = [
-            { id: 'ones', name: '에이스', desc: '1의 눈 총합' },
-            { id: 'twos', name: '듀얼', desc: '2의 눈 총합' },
-            { id: 'threes', name: '트리플', desc: '3의 눈 총합' },
-            { id: 'fours', name: '쿼드', desc: '4의 눈 총합' },
-            { id: 'fives', name: '펜타', desc: '5의 눈 총합' },
-            { id: 'sixes', name: '헥사', desc: '6의 눈 총합' },
-            { id: 'subtotal', name: '상단 소계', desc: '63점 돌파 시 보너스 +35', special: true },
-            { id: 'choice', name: 'Choice', desc: '모든 눈의 총합' },
-            { id: 'fourOfAKind', name: 'Four of a Kind', desc: '동일 눈 4개 이상 시 동일 눈 4개 합' },
-            { id: 'fullHouse', name: 'Full House', desc: '3개 동일 + 2개 동일 조합 시 5개 합' },
-            { id: 'smallStraight', name: '스몰 스트레이트', desc: '4개 연속 눈 (고정 15점)' },
-            { id: 'largeStraight', name: '라지 스트레이트', desc: '5개 연속 눈 (고정 30점)' },
-            { id: 'yacht', name: 'Yacht', desc: '5개 동일 눈 (고정 50점)' },
-            { id: 'total', name: '총합 점수', desc: '', special: true }
+        // 족보 데이터 구조 정의
+        const scoreCategories = [
+            { id: 'ones', name: '⚀ 에이스', desc: '1의 눈의 총합' },
+            { id: 'twos', name: '⚁ 듀얼', desc: '2의 눈의 총합' },
+            { id: 'threes', name: '⚂ 트리플', desc: '3의 눈의 총합' },
+            { id: 'fours', name: '⚃ 쿼드', desc: '4의 눈의 총합' },
+            { id: 'fives', name: '⚄ 펜타', desc: '5의 눈의 총합' },
+            { id: 'sixes', name: '⚅ 헥사', desc: '6의 눈의 총합' },
+            { id: 'subtotal', name: '상단 보너스 계산식', desc: '상단 점수 합이 63점 이상', isSpecial: true },
+            { id: 'bonus', name: '상단 보너스 (+35점)', desc: '조건 만족 시 고정 35점 가산', isSpecial: true },
+            { id: 'choice', name: '초이스 (Choice)', desc: '눈 5개의 모든 합' },
+            { id: 'fourOfAKind', name: '포커 (Four of a Kind)', desc: '동일 눈 4개 이상 시 눈 5개 총합' },
+            { id: 'fullHouse', name: '풀 하우스 (Full House)', desc: '3개동일 + 2개동일 시 눈 5개 총합' },
+            { id: 'smallStraight', name: '스몰 스트레이트', desc: '4개 연속된 수 (고정 15점)' },
+            { id: 'largeStraight', name: '라지 스트레이트', desc: '5개 연속된 수 (고정 30점)' },
+            { id: 'yacht', name: '요트 (Yacht)', desc: '동일한 눈 5개 (고정 50점)' },
+            { id: 'total', name: '총점 (Total Score)', desc: '', isSpecial: true }
         ];
 
-        // 소켓 ID 캡처
         socket.on('connect', () => {
             myId = socket.id;
         });
 
-        // 1. 대기방 조인
-        joinBtn.addEventListener('click', () => {
-            const nickname = nicknameInput.value.trim();
-            const roomId = roomInput.value.trim();
-            if (!nickname || !roomId) return alert('닉네임과 방 코드를 입력하세요.');
-
-            socket.emit('joinRoom', { roomId, nickname });
-
-            document.getElementById('room-title').innerText = `방 코드: ${roomId}`;
-            roomWaiting.style.display = 'block';
-            joinBtn.style.display = 'none';
-            nicknameInput.disabled = true;
-            roomInput.disabled = true;
+        // 방 만들기
+        createRoomBtn.addEventListener('click', () => {
+            const nick = nicknameInput.value.trim();
+            if(!nick) return alert('닉네임을 입력해주세요.');
+            socket.emit('createRoom', { nickname: nick });
         });
 
-        socket.on('roomUpdate', ({ players, status }) => {
+        socket.on('roomCreated', ({ roomId, players }) => {
+            roomCodeTitle.innerText = `대기방 코드: ${roomId}`;
+            waitingRoom.style.display = 'block';
+            document.getElementById('initial-btns').style.display = 'none';
+            joinCodeGroup.style.display = 'none';
+            updateLobbyPlayers(players);
+        });
+
+        // 방 참가하기 필드 열기
+        showJoinBtn.addEventListener('click', () => {
+            joinCodeGroup.style.display = 'flex';
+        });
+
+        // 방 참가 신청
+        joinConfirmBtn.addEventListener('click', () => {
+            const nick = nicknameInput.value.trim();
+            const code = roomInput.value.trim();
+            if(!nick || !code) return alert('닉네임과 입장 코드를 기입하세요.');
+            socket.emit('joinRoom', { roomId: code, nickname: nick });
+        });
+
+        socket.on('joinError', (msg) => {
+            alert(msg);
+        });
+
+        // 대기실 업데이트 처리
+        socket.on('roomUpdate', ({ players }) => {
+            waitingRoom.style.display = 'block';
+            document.getElementById('initial-btns').style.display = 'none';
+            joinCodeGroup.style.display = 'none';
+            updateLobbyPlayers(players);
+        });
+
+        function updateLobbyPlayers(players) {
             playersData = players;
             playerList.innerHTML = '';
             players.forEach(p => {
-                const tag = document.createElement('div');
-                tag.className = 'player-tag';
-                tag.innerHTML = `👤 ${p.nickname} ${p.id === socket.id ? '(나)' : ''}`;
-                playerList.appendChild(tag);
+                const badge = document.createElement('div');
+                badge.className = 'player-badge';
+                badge.innerHTML = `<span>👤 ${p.nickname}</span> <span>${p.id === myId ? '나' : '대기중'}</span>`;
+                playerList.appendChild(badge);
             });
 
-            // 방장 권한으로 시작버튼 제어 (첫 접속자)
-            if (players.length > 0 && players[0].id === socket.id) {
+            // 방장(첫 유저)이면서 1인 이상일 시 시작 활성화
+            if (players.length > 0 && players[0].id === myId) {
                 startBtn.removeAttribute('disabled');
                 document.getElementById('min-players-tip').style.display = 'none';
             } else {
                 startBtn.setAttribute('disabled', 'true');
             }
-        });
+        }
 
-        // 2. 카드 뽑기 연출 시작
         startBtn.addEventListener('click', () => {
             socket.emit('startGame');
         });
 
+        // 순서 뽑기 진입
         socket.on('startCardDraw', ({ players, cards }) => {
             lobbyScreen.style.display = 'none';
             cardScreen.style.display = 'flex';
@@ -860,37 +914,38 @@
         });
 
         function renderCards(cards) {
-            cardContainer.innerHTML = '';
+            cardGrid.innerHTML = '';
             cards.forEach(card => {
                 const cardEl = document.createElement('div');
-                cardEl.className = `matte-card ${card.revealed ? 'flipped' : ''}`;
+                cardEl.className = `black-card ${card.revealed ? 'flipped' : ''}`;
                 cardEl.innerHTML = `
-                    <div class="card-back"></div>
-                    <div class="card-front">
-                        <div class="number">${card.orderNum}</div>
-                        <div class="owner">${card.drawnBy ? card.drawnBy : ''}</div>
+                    <div class="card-side side-back"></div>
+                    <div class="card-side side-front">
+                        <div class="num">${card.orderNum}</div>
+                        <div class="name">${card.drawnBy ? card.drawnBy : ''}</div>
                     </div>
                 `;
-
                 cardEl.addEventListener('click', () => {
-                    if (!card.revealed) {
+                    const me = playersData.find(p => p.id === myId);
+                    if (me && me.order === null && !card.revealed) {
                         socket.emit('drawCard', card.id);
                     }
                 });
-                cardContainer.appendChild(cardEl);
+                cardGrid.appendChild(cardEl);
             });
         }
 
-        socket.on('cardRevealed', ({ cards }) => {
+        socket.on('cardRevealed', ({ cards, players }) => {
             renderCards(cards);
         });
 
-        // 3. 본 게임 개시
-        socket.on('turnStarted', ({ activePlayerId: activeId, turnIndex, rollsLeft: rolls, dice, kept, timeLeft }) => {
-            cardScreen.style.display = 'none';
+        // 턴 개시 및 갱신
+        socket.on('turnStarted', ({ activePlayerId: activeId, turnIndex, rollsLeft: rolls, dice, kept, timeLeft, players }) => {
             lobbyScreen.style.display = 'none';
+            cardScreen.style.display = 'none';
             gameScreen.style.display = 'grid';
 
+            playersData = players;
             activePlayerId = activeId;
             isMyTurn = (activeId === myId);
             rollsLeft = rolls;
@@ -902,51 +957,45 @@
             renderDicePlate();
             renderScoreBoard();
 
-            turnTimerBadge.innerText = `${timeLeft}초`;
+            timerBadge.innerText = `${timeLeft}초`;
         });
 
         socket.on('timerTick', (timeLeft) => {
-            turnTimerBadge.innerText = `${timeLeft}초`;
+            timerBadge.innerText = `${timeLeft}초`;
             if (timeLeft <= 10) {
-                turnTimerBadge.style.backgroundColor = '#ef4444';
+                timerBadge.style.backgroundColor = '#d32f2f';
             } else {
-                turnTimerBadge.style.backgroundColor = 'var(--accent-blue)';
+                timerBadge.style.backgroundColor = '#3c3a35';
             }
         });
 
-        // 프로필 바 렌더링 (플레이 순서 정렬 상태 유지)
         function updateProfilesBar(turnIndex) {
             profilesBar.innerHTML = '';
             playersData.forEach((player, idx) => {
-                const card = document.createElement('div');
-                card.className = `profile-card ${idx === turnIndex ? 'active' : ''}`;
-                card.innerHTML = `
-                    <span style="font-weight: 700;">${player.nickname}</span>
-                    <span style="color: var(--accent-gold); font-size: 18px; font-weight: 800;">${player.totalScore} 점</span>
+                const badge = document.createElement('div');
+                badge.className = `profile-badge ${idx === turnIndex ? 'active' : ''}`;
+                badge.innerHTML = `
+                    <strong style="font-size: 13px;">${player.nickname}</strong>
+                    <span style="font-weight: 800; color: var(--accent-gold); font-size: 16px;">${player.totalScore}</span>
                 `;
-                profilesBar.appendChild(card);
+                profilesBar.appendChild(badge);
             });
         }
 
-        // 상태 지시 텍스트
         function updateStatusUI() {
             rollsLeftText.innerText = `리롤 남음: ${rollsLeft} / 3`;
             if (isMyTurn) {
-                statusText.innerText = "당신의 차례입니다! 주사위를 흔들거나 족보를 기입하세요.";
-                statusText.style.color = 'var(--accent-gold)';
-                putCupBtn.disabled = (rollsLeft === 0);
+                statusText.innerText = "당신의 차례! 컵을 마우스로 잡고 흔드세요.";
                 completeTurnBtn.disabled = false;
             } else {
                 const activePlayer = playersData.find(p => p.id === activePlayerId);
-                statusText.innerText = `${activePlayer ? activePlayer.nickname : '상대'}가 주사위를 굴리는 중입니다...`;
-                statusText.style.color = 'white';
-                putCupBtn.disabled = true;
+                statusText.innerText = `${activePlayer ? activePlayer.nickname : '대방'} 차례입니다...`;
                 completeTurnBtn.disabled = true;
             }
         }
 
-        // 주사위 돔 생성 공용 함수
-        function createDiceElement(val, index, isHeld) {
+        // 주사위 엘리먼트 생성
+        function createDiceElement(val, index) {
             const d = document.createElement('div');
             d.className = 'dice';
             d.setAttribute('data-val', val);
@@ -964,87 +1013,86 @@
             return d;
         }
 
-        // 주사위 홈 & 필드 분리 드로잉
+        // 보드판의 홈과 벨벳 필드에 주사위 배치 렌더링
         function renderDicePlate() {
-            holdHomeZone.innerHTML = '';
-            rollFieldZone.innerHTML = '';
+            // 상단 보관 홈 초기화
+            holdSlots.forEach(slot => {
+                slot.innerHTML = '';
+                slot.style.border = '2px solid #2d1d11';
+            });
+            // 하단 벨벳 필드 초기화
+            rollFieldFelt.innerHTML = '';
 
             currentDice.forEach((val, idx) => {
                 const isHeld = currentKept[idx];
-                const diceEl = createDiceElement(val, idx, isHeld);
+                const diceEl = createDiceElement(val, idx);
 
                 if (isHeld) {
-                    holdHomeZone.appendChild(diceEl);
+                    // 상단 홈(slot)에 개별 삽입
+                    const slot = document.querySelector(`.hold-slot[data-index="${idx}"]`);
+                    if (slot) {
+                        slot.appendChild(diceEl);
+                        slot.style.border = '2px solid var(--accent-gold)';
+                    }
                 } else {
-                    rollFieldZone.appendChild(diceEl);
+                    // 하단 벨벳 필드에 삽입
+                    rollFieldFelt.appendChild(diceEl);
                 }
             });
 
-            // 게이지 바 갱신
             shakeGauge.style.width = `${shakeProgress}%`;
         }
 
-        // 컵 마우스 인터랙션으로 흔들기 구현
-        let initialMouseX = 0;
-        diceCup.addEventListener('mousedown', (e) => {
+        // 드래그 흔들기 연출 마우스 바인딩
+        let isDragging = false;
+        let lastClientX = 0;
+        let localProgress = 0;
+
+        matteCup.addEventListener('mousedown', (e) => {
             if (!isMyTurn || rollsLeft === 0) return;
-            // 컵에 아무것도 안담겨 있다면 흔들기 방지 (즉, 모두 필드에 나온 상태에서 그냥 흔들기 차단)
-            if (!currentKept.some(k => k === true)) {
-                return alert('먼저 [통에 주사위 넣기] 버튼을 누른 후 흔들어주세요.');
+            // 만약 5개 주사위가 모두 이미 보관 홈(hold)에 올라가 있다면 굴릴 수 없음
+            if (currentKept.every(k => k === true)) {
+                return alert('필드에 남은 주사위가 없습니다. 족보를 결정하세요!');
             }
 
-            isDraggingCup = true;
-            initialMouseX = e.clientX;
-            diceCup.classList.add('shaking');
+            isDragging = true;
+            lastClientX = e.clientX;
+            matteCup.classList.add('shaking');
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (!isDraggingCup) return;
+            if (!isDragging) return;
             const currentX = e.clientX;
-            const delta = Math.abs(currentX - initialMouseX);
+            const delta = Math.abs(currentX - lastClientX);
             
-            if (delta > 5) {
-                initialMouseX = currentX;
-                socket.emit('shakeCup', 2.5); // 서버로 흔들림 정도 전송
+            if (delta > 4) {
+                lastClientX = currentX;
+                socket.emit('shakeCup', 3); // 흔들림 강도 3 누적
             }
         });
 
         window.addEventListener('mouseup', () => {
-            if (!isDraggingCup) return;
-            isDraggingCup = false;
-            diceCup.classList.remove('shaking');
+            if (!isDragging) return;
+            isDragging = false;
+            matteCup.classList.remove('shaking');
 
             if (shakeProgress >= 100) {
-                // 완전히 다 흔들었을 때 쏟기 격발
                 socket.emit('rollDice');
             } else {
-                // 흔들다 멈췄을 땐 게이지 리셋
+                // 완전히 안흔들면 리셋
                 shakeProgress = 0;
                 socket.emit('shakeCup', -100);
             }
-        });
-
-        // 컵에 넣기 버튼 액션
-        putCupBtn.addEventListener('click', () => {
-            socket.emit('putDiceInCup');
-        });
-
-        // '통에 주사위 넣기' 처리 동기화
-        socket.on('dicePutInCup', ({ kept }) => {
-            currentKept = kept;
-            shakeProgress = 0;
-            renderDicePlate();
         });
 
         socket.on('cupShaking', ({ shakeProgress: servProgress, shakerNickname }) => {
             shakeProgress = servProgress;
             shakeGauge.style.width = `${shakeProgress}%`;
             if (!isMyTurn) {
-                statusText.innerText = `${shakerNickname}가 컵을 마구 흔드는 중... (${Math.floor(shakeProgress)}%)`;
+                statusText.innerText = `${shakerNickname}가 컵을 흔드는 중... (${Math.floor(shakeProgress)}%)`;
             }
         });
 
-        // 주사위 필드로 떨어져서 리롤 완료
         socket.on('diceRolled', ({ dice, kept, rollsLeft: rolls }) => {
             currentDice = dice;
             currentKept = kept;
@@ -1052,27 +1100,29 @@
             shakeProgress = 0;
             renderDicePlate();
             updateStatusUI();
-            
-            // 필드로 튕겨 나올 때 슬라이드/바운스 느낌 진동 효과
-            rollFieldZone.style.animation = 'none';
-            setTimeout(() => { rollFieldZone.style.animation = 'shakeCupAnim 0.2s 1'; }, 10);
+            renderScoreBoard();
+
+            // 필드 타격 사운드/시각 임팩트 진동
+            rollFieldFelt.style.transform = 'translateY(4px)';
+            setTimeout(() => { rollFieldFelt.style.transform = 'translateY(0)'; }, 100);
         });
 
         socket.on('keepUpdated', (kept) => {
             currentKept = kept;
             renderDicePlate();
+            renderScoreBoard();
         });
 
-        // 리롤 그만하고 즉시 점수표 호출
         completeTurnBtn.addEventListener('click', () => {
-            // 필드에 꺼내져서 보관되지 않은 주사위가 있으면 전부 홀드 존으로 가져오는 애니메이션 연출을 위해 true 전환
-            socket.emit('putDiceInCup');
-            isMyTurn = false; // 카테고리 클릭 확정 전 임시 제어
-            statusText.innerText = '족보 기입판에서 적용할 칸을 선택해 주세요.';
+            if (!isMyTurn) return;
+            // 턴 완료 시에는 더이상 리롤하지 않으므로, 확인 후 기록을 돕도록 유도
+            rollsLeft = 0;
+            updateStatusUI();
+            renderScoreBoard();
         });
 
-        // 스코어 계산 도우미 로직 (클라이언트 프리뷰 전용)
-        function previewScore(catId) {
+        // 예상 획득 점수 산출기 (클라이언트 가이드용)
+        function calculateLocalPreview(catId) {
             const counts = Array(7).fill(0);
             let sum = 0;
             currentDice.forEach(d => { counts[d]++; sum += d; });
@@ -1086,94 +1136,122 @@
                 case 'sixes': return counts[6] * 6;
                 case 'choice': return sum;
                 case 'fourOfAKind':
-                    for(let i=1; i<=6; i++) { if(counts[i] >= 4) return i*4; }
+                    for (let i = 1; i <= 6; i++) {
+                        if (counts[i] >= 4) return sum;
+                    }
                     return 0;
                 case 'fullHouse':
-                    let hasThree = false, hasTwo = false, tVal=0, twVal=0;
-                    for(let i=1; i<=6; i++) {
-                        if(counts[i] === 3) { hasThree = true; tVal=i; }
-                        if(counts[i] === 2) { hasTwo = true; twVal=i; }
-                        if(counts[i] === 5) { hasThree=true; hasTwo=true; tVal=i; twVal=i; }
+                    let hasThree = false, hasTwo = false;
+                    for (let i = 1; i <= 6; i++) {
+                        if (counts[i] === 3) hasThree = true;
+                        if (counts[i] === 2) hasTwo = true;
+                        if (counts[i] === 5) { hasThree = true; hasTwo = true; }
                     }
-                    return (hasThree && hasTwo) ? (tVal*3 + twVal*2) : 0;
+                    return (hasThree && hasTwo) ? sum : 0;
                 case 'smallStraight':
-                    const uStr = Object.keys(counts).filter(k=>counts[k]>0).join('');
-                    if(/1.*2.*3.*4|2.*3.*4.*5|3.*4.*5.*6/.test(uStr)) return 15;
+                    const uStr = Object.keys(counts).filter(k=>counts[k]>0).map(Number).sort((a,b)=>a-b).join('');
+                    if (/1.*2.*3.*4|2.*3.*4.*5|3.*4.*5.*6/.test(uStr)) return 15;
                     return 0;
                 case 'largeStraight':
-                    const ulStr = Object.keys(counts).filter(k=>counts[k]>0).join('');
-                    if(/1.*2.*3.*4.*5|2.*3.*4.*5.*6/.test(ulStr)) return 30;
+                    const ulStr = Object.keys(counts).filter(k=>counts[k]>0).map(Number).sort((a,b)=>a-b).join('');
+                    if (/1.*2.*3.*4.*5|2.*3.*4.*5.*6/.test(ulStr)) return 30;
                     return 0;
                 case 'yacht':
-                    for(let i=1; i<=6; i++) { if(counts[i] === 5) return 50; }
+                    for (let i = 1; i <= 6; i++) {
+                        if (counts[i] === 5) return 50;
+                    }
                     return 0;
                 default: return 0;
             }
         }
 
-        // 우측 족보 점수 기록판 렌더링
+        // 실물 오프라인 인쇄 점수판 포맷 구현
         function renderScoreBoard() {
-            scoreTbody.innerHTML = '';
-            const myData = playersData.find(p => p.id === myId);
-            if (!myData) return;
+            // 헤더 조립
+            tableHeaderRow.innerHTML = `<th style="width: 140px; text-align: left; padding-left: 8px;">족보 항목</th>`;
+            playersData.forEach(p => {
+                tableHeaderRow.innerHTML += `<th>${p.nickname}</th>`;
+            });
 
-            const board = myData.scoreBoard;
+            // 바디 조립
+            tableTbody.innerHTML = '';
 
-            // 서브토탈 상단 점수 합산 산출
-            let upperSum = 0;
-            ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'].forEach(c => upperSum += (board[c] || 0));
-
-            categories.forEach(cat => {
+            scoreCategories.forEach(cat => {
                 const tr = document.createElement('tr');
-                tr.className = 'score-row';
 
-                if (cat.special) {
-                    tr.classList.add(cat.id === 'subtotal' ? 'bonus-row' : 'total-row');
-                    const value = cat.id === 'subtotal' 
-                        ? `${upperSum} / 63 ${myData.bonusEligible ? ' (+35 Bonus!)' : ''}` 
-                        : `${myData.totalScore} 점`;
-                    
-                    tr.innerHTML = `
-                        <td><strong>${cat.name}</strong></td>
-                        <td class="score-cell filled">${value}</td>
-                    `;
+                if (cat.isSpecial) {
+                    tr.className = 'special-row';
+                    if (cat.id === 'total') {
+                        tr.className = 'special-row total-score-row';
+                    }
+
+                    let cellsHtml = `<td class="category-name-cell"><strong>${cat.name}</strong></td>`;
+                    playersData.forEach(p => {
+                        let displayVal = '0';
+                        if (cat.id === 'subtotal') {
+                            let upperSum = 0;
+                            ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'].forEach(c => upperSum += (p.scoreBoard[c] || 0));
+                            displayVal = `${upperSum} / 63`;
+                        } else if (cat.id === 'bonus') {
+                            displayVal = p.bonusEligible ? '+35' : '0';
+                        } else if (cat.id === 'total') {
+                            displayVal = `${p.totalScore} 점`;
+                        }
+                        cellsHtml += `<td style="font-weight: 800; font-size:13px;">${displayVal}</td>`;
+                    });
+                    tr.innerHTML = cellsHtml;
                 } else {
-                    const isFilled = board[cat.id] !== null;
-                    if (isFilled) tr.classList.add('filled');
-
-                    const scoreValue = isFilled ? board[cat.id] : previewScore(cat.id);
-                    const cellClass = isFilled ? 'filled' : 'preview empty';
-
-                    tr.innerHTML = `
-                        <td>
-                            <strong>${cat.name}</strong><br>
-                            <span style="font-size: 11px; color: var(--text-secondary);">${cat.desc}</span>
+                    let cellsHtml = `
+                        <td class="category-name-cell" title="${cat.desc}">
+                            <strong>${cat.name}</strong>
                         </td>
-                        <td class="score-cell ${cellClass}">${isFilled ? scoreValue + ' 점' : '(예상) ' + scoreValue}</td>
                     `;
 
-                    // 본인 차례이고 아직 기록 안한 칸이면 기입 이벤트 등록
-                    if (isMyTurn && !isHeldInCupState() && !isFilled) {
-                        tr.addEventListener('click', () => {
-                            showConfirmModal(cat.id, cat.name, scoreValue);
-                        });
+                    playersData.forEach(p => {
+                        const isFilled = p.scoreBoard[cat.id] !== null;
+                        const scoreVal = isFilled ? p.scoreBoard[cat.id] : calculateLocalPreview(cat.id);
+                        
+                        let cellClass = 'score-input-cell';
+                        let displayValue = '';
+
+                        if (isFilled) {
+                            cellClass += ' filled';
+                            displayValue = `${scoreVal}`;
+                        } else {
+                            if (p.id === myId && isMyTurn) {
+                                cellClass += ' preview';
+                                displayValue = `${scoreVal}`;
+                            } else {
+                                cellClass += ' empty disabled-click';
+                                displayValue = '-';
+                            }
+                        }
+
+                        cellsHtml += `<td class="${cellClass}" data-cat="${cat.id}" data-player="${p.id}">${displayValue}</td>`;
+                    });
+
+                    tr.innerHTML = cellsHtml;
+
+                    // 클릭 조작 바인딩
+                    if (isMyTurn) {
+                        const cell = tr.querySelector(`.score-input-cell[data-player="${myId}"]`);
+                        if (cell && !cell.classList.contains('filled')) {
+                            const expectedVal = calculateLocalPreview(cat.id);
+                            cell.addEventListener('click', () => {
+                                showConfirmModal(cat.id, cat.name, expectedVal);
+                            });
+                        }
                     }
                 }
-                scoreTbody.appendChild(tr);
+                tableTbody.appendChild(tr);
             });
         }
 
-        // 주사위가 컵안에 들어가 숨겨져 있으면 점수를 적지 못하도록 체크
-        function isHeldInCupState() {
-            return currentKept.every(k => k === true) && rollsLeft === 3;
-        }
-
-        // 점수 기입 전 모달 띄우기
         let pendingCategory = null;
         function showConfirmModal(catId, catName, score) {
             pendingCategory = catId;
-            modalTitle.innerText = `[${catName}]에 기입하시겠습니까?`;
-            modalDesc.innerText = `확정 시 되돌릴 수 없습니다. 획득할 점수: ${score}점`;
+            modalTitle.innerText = `[${catName}] 칸에 입력하시겠습니까?`;
+            modalDesc.innerText = `현재 조건에 맞춰 산출된 점수는 ${score}점입니다. 한 번 확정하면 이후 되돌릴 수 없습니다.`;
             confirmModal.style.display = 'flex';
         }
 
@@ -1189,98 +1267,55 @@
             }
         });
 
-        // 4. 도파민 대폭발 연출 정의
-        socket.on('scoreSelected', ({ playerId, scoreBoard: sBoard, totalScore, category, score, isTimeout }) => {
-            // 정보 업데이트
-            const player = playersData.find(p => p.id === playerId);
-            if (player) {
-                player.scoreBoard = sBoard;
-                player.totalScore = totalScore;
-            }
+        // 족보 선택에 따른 특수 피드백 및 도파민 폭죽
+        socket.on('scoreSelected', ({ playerId, scoreBoard, totalScore, category, score, isTimeout, players }) => {
+            playersData = players;
+            confirmModal.style.display = 'none';
+            renderScoreBoard();
 
-            // 본인 기입 완료 시 임시 모달 닫기
-            if (playerId === myId) {
-                confirmModal.style.display = 'none';
-            }
-
-            // 도파민 연출 트리거 (폭죽)
+            // 요트 대박 폭죽 연출
             if (score > 0) {
                 if (category === 'yacht') {
-                    // 1. 요트 폭죽 (초특급 연출)
-                    triggerBigConfetti();
-                } else if (category === 'fullHouse' && score >= 27) {
-                    // 2. 대박 풀하우스
-                    triggerMediumConfetti('#3b82f6');
+                    triggerMegaExplosion();
+                } else if (category === 'fullHouse' && score >= 25) {
+                    triggerFeltExplosion('#2563eb');
                 } else if (category === 'fourOfAKind' && score >= 20) {
-                    // 3. 고득점 쿼드
-                    triggerMediumConfetti('#8b5cf6');
+                    triggerFeltExplosion('#9333ea');
                 }
             }
         });
 
-        // 요트 파티 이펙트
-        function triggerBigConfetti() {
-            const duration = 3 * 1000;
-            const end = Date.now() + duration;
-
+        function triggerMegaExplosion() {
+            const end = Date.now() + (4 * 1000);
             (function frame() {
-                confetti({
-                    particleCount: 5,
-                    angle: 60,
-                    spread: 55,
-                    origin: { x: 0 },
-                    colors: ['#d4af37', '#ffffff', '#ff0000']
-                });
-                confetti({
-                    particleCount: 5,
-                    angle: 120,
-                    spread: 55,
-                    origin: { x: 1 },
-                    colors: ['#d4af37', '#ffffff', '#ff0000']
-                });
-
-                if (Date.now() < end) {
-                    requestAnimationFrame(frame);
-                }
+                confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ffae00', '#ffffff', '#ff3e3e'] });
+                confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ffae00', '#ffffff', '#ff3e3e'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
             }());
         }
 
-        // 일반 족보 이펙트
-        function triggerMediumConfetti(themeColor) {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: [themeColor, '#ffffff', '#ffae00']
-            });
+        function triggerFeltExplosion(color) {
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: [color, '#ffffff', '#d4af37'] });
         }
 
-        // 5. 게임오버 최종 랭킹
+        // 게임 최종 순위 처리
         socket.on('gameOver', (sortedPlayers) => {
             gameScreen.style.display = 'none';
             gameoverScreen.style.display = 'flex';
-            rankingList.innerHTML = '';
+            rankBox.innerHTML = '';
 
             sortedPlayers.forEach((p, idx) => {
                 const isWinner = (idx === 0);
-                const item = document.createElement('div');
-                item.className = `ranking-item ${isWinner ? 'winner' : ''}`;
-                item.innerHTML = `
-                    <div>
-                        <strong style="color: var(--accent-gold); margin-right: 10px;">${idx + 1}위</strong>
-                        <span>${p.nickname}</span>
-                    </div>
-                    <strong style="font-size: 22px;">${p.totalScore} 점</strong>
+                const row = document.createElement('div');
+                row.className = `rank-row ${isWinner ? 'winner' : ''}`;
+                row.innerHTML = `
+                    <div><strong>${idx + 1}위</strong> <span style="margin-left:12px;">${p.nickname}</span></div>
+                    <strong style="color:var(--accent-gold); font-size:18px;">${p.totalScore} 점</strong>
                 `;
-                rankingList.appendChild(item);
+                rankBox.appendChild(row);
             });
 
-            // 우승자 왕관 폭죽
-            triggerBigConfetti();
-        });
-
-        lobbyBackBtn.addEventListener('click', () => {
-            window.location.reload();
+            triggerMegaExplosion();
         });
     </script>
 </body>
