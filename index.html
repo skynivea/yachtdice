@@ -6,8 +6,10 @@
     <title>럭셔리 요트 다이스 (Yacht Dice)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Socket.io 라이브러리 추가 -->
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* 무광 블랙 및 카드 플립 효과 */
+        /* 카드 플립 효과 */
         .card-inner {
             transition: transform 0.6s;
             transform-style: preserve-3d;
@@ -39,7 +41,7 @@
         .cup-shaking {
             animation: cup-shake 0.1s infinite;
         }
-        /* 파티클 축하 효과 */
+        /* 파티클 효과 */
         @keyframes particle-fade {
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
             100% { transform: translate(var(--tw-x), var(--tw-y)) scale(0); opacity: 0; }
@@ -54,73 +56,75 @@
     <!-- 탑 헤더 -->
     <header class="py-4 bg-slate-950 text-center border-b border-slate-800 shadow-md">
         <h1 class="text-2xl font-black text-slate-200 tracking-widest">🎲 PREMIUM YACHT DICE</h1>
+        <div id="room-info-display" class="text-xs text-emerald-400 font-bold mt-1 hidden">방 코드: <span id="display-room-code">-</span></div>
     </header>
 
     <!-- 게임 컨테이너 -->
     <main class="flex-grow flex items-center justify-center p-4 relative overflow-hidden">
         
-        <!-- 1단계: 대기 화면 및 방 시스템 UI -->
+        <!-- 1단계: 대기 화면 및 방 생성/참여 UI -->
         <section id="lobby-screen" class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
             <h2 class="text-xl font-bold text-center text-slate-300 mb-6">게임 대기실</h2>
             
-            <div id="lobby-buttons" class="grid grid-cols-2 gap-4 mb-6">
-                <button onclick="initCreateRoom()" class="py-4 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl font-bold text-lg transition-all">방 만들기</button>
-                <button onclick="initJoinRoom()" class="py-4 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl font-bold text-lg transition-all">방 들어가기</button>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-slate-400 mb-1">닉네임</label>
+                <input type="text" id="nickname-input" placeholder="이름을 입력하세요" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500">
             </div>
 
-            <!-- 방 설정 영역 -->
-            <div id="room-setup" class="hidden space-y-4">
-                <div class="border-t border-slate-700 pt-4">
-                    <label class="block text-sm font-semibold text-slate-400 mb-2">플레이어 이름 입력 (최대 6명)</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="player-name-input" placeholder="플레이어 이름" class="flex-grow bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
-                        <button onclick="addPlayer()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold transition-all">추가</button>
-                    </div>
-                </div>
+            <div id="lobby-buttons" class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="createRoom()" class="py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold transition-all">방 만들기</button>
+                <button onclick="showJoinInput()" class="py-3 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl font-bold transition-all">방 들어가기</button>
+            </div>
 
-                <!-- 현재 방 인원 리스트 -->
-                <div>
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현재 참여 멤버 (<span id="player-count">0</span>/6)</h3>
-                    <ul id="player-list" class="space-y-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 max-h-40 overflow-y-auto"></ul>
+            <div id="join-input-area" class="hidden space-y-4 border-t border-slate-700 pt-4 mb-6">
+                <label class="block text-sm font-semibold text-slate-400">4자리 방 코드 입력</label>
+                <div class="flex gap-2">
+                    <input type="text" id="room-code-input" placeholder="CODE" maxlength="4" class="flex-grow bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-center text-white tracking-widest uppercase font-bold focus:outline-none focus:border-emerald-500">
+                    <button onclick="joinRoom()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-2 rounded-lg font-bold transition-all">입장</button>
                 </div>
+            </div>
+
+            <!-- 현재 방 인원 리스트 -->
+            <div id="room-setup" class="hidden space-y-4 border-t border-slate-700 pt-4">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현재 참여 멤버 (<span id="player-count">0</span>/6)</h3>
+                <ul id="player-list" class="space-y-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 max-h-40 overflow-y-auto"></ul>
 
                 <button onclick="startGame()" id="start-game-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all shadow-lg" disabled>
-                    게임 시작 (플레이어 필요)
+                    게임 시작
                 </button>
             </div>
         </section>
 
-        <!-- 2단계: 순서 정하기 카드 화면 (무광 블랙 디자인) -->
+        <!-- 2단계: 순서 정하기 카드 화면 -->
         <section id="card-selection-screen" class="hidden w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl text-center">
             <h2 class="text-2xl font-black text-slate-200 mb-2">🎲 순서 정하기</h2>
             <p class="text-slate-400 text-sm mb-8">카드를 한 장씩 골라 뒤집어 게임 진행 순서를 정하세요.</p>
-            
             <div id="card-container" class="grid grid-cols-2 md:grid-cols-6 gap-4 justify-center mb-8"></div>
-
-            <button onclick="revealAllCardsAndStart()" id="next-to-game-btn" class="hidden mx-auto py-3 px-8 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-lg transition-all shadow-lg">
-                순서 정렬 후 필드로 이동하기
-            </button>
         </section>
 
         <!-- 3단계: 메인 게임 필드 구조 -->
         <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center">
             
-            <!-- (좌) 빨간색 게임 필드 및 빨간색 홀드 홈 (불투명한 빨간색 영역) -->
+            <!-- (좌) 빨간색 게임 필드 및 홀드 홈 (홀드 홈: 검정색 + 5칸 슬롯 복구!) -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[320px] max-w-[450px] aspect-square mx-auto lg:mx-0">
                 
-                <!-- 상단: 빨간색 홀드 홈 (요청에 따라 불투명한 빨간색으로 수정 및 빈 칸 시각화 삭제) -->
+                <!-- 상단: 검정색 홀드 홈 (Hold Home - 5개 점선 틀 복구) -->
                 <div>
-                    <h3 class="text-xs font-bold text-red-300 mb-2 uppercase tracking-wider text-center">보관용 홀드 홈 (Hold Home)</h3>
-                    <div id="hold-home" class="flex gap-3 justify-center items-center bg-red-700 border-2 border-red-600 p-4 rounded-xl min-h-[84px]">
-                        <!-- 홀드된 주사위들만 동적으로 깔끔하게 나열됨 (미리 생성된 빈 점선 박스 없음) -->
+                    <h3 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider text-center">보관용 홀드 홈 (Hold Home)</h3>
+                    <div id="hold-home" class="grid grid-cols-5 gap-2 bg-black border-2 border-slate-700 p-3 rounded-xl min-h-[80px]">
+                        <div class="border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center"></div>
+                        <div class="border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center"></div>
+                        <div class="border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center"></div>
+                        <div class="border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center"></div>
+                        <div class="border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center"></div>
                     </div>
                 </div>
 
-                <!-- 중단: 빨간색 게임 필드 (불투명한 빨간색 영역) -->
+                <!-- 중단: 불투명한 빨간색 게임 필드 (Roll Field) -->
                 <div class="my-6">
                     <h3 class="text-xs font-bold text-red-300 mb-2 uppercase tracking-wider text-center">게임 필드 (Roll Field)</h3>
                     <div id="roll-field" class="bg-red-800 border-2 border-red-700 rounded-xl p-4 min-h-[140px] flex items-center justify-center gap-4 relative overflow-hidden">
-                        <div id="field-empty-msg" class="text-red-200 text-sm font-semibold text-center pointer-events-none">주사위 컵을 드래그하거나 클릭하여 쏟아내세요!</div>
+                        <div id="field-empty-msg" class="text-red-200 text-sm font-semibold text-center pointer-events-none">주사위 컵을 탭하여 주사위를 굴리세요!</div>
                         <div id="field-dice-wrapper" class="flex gap-3 flex-wrap justify-center"></div>
                     </div>
                 </div>
@@ -140,22 +144,20 @@
             <div class="w-full lg:w-72 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between items-center shadow-xl relative min-h-[350px]">
                 <div class="text-center">
                     <h2 class="text-md font-bold text-slate-300">주사위 컵</h2>
-                    <p class="text-[11px] text-slate-500 mt-1">드래그하여 흔들거나, 가볍게 터치/클릭하세요!</p>
+                    <p class="text-[11px] text-slate-500 mt-1">마우스나 손가락으로 컵을 가볍게 탭하세요!</p>
                 </div>
 
                 <!-- 컵 인터랙션 코어 구역 -->
                 <div class="relative flex flex-col items-center justify-center my-auto w-full h-48">
-                    <!-- 드래그/클릭할 컵 몸통 -->
-                    <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-slate-700 to-slate-950 rounded-b-3xl rounded-t-lg border-t-8 border-slate-600 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75 relative z-10 select-none">
+                    <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-slate-700 to-slate-950 rounded-b-3xl rounded-t-lg border-t-8 border-slate-600 shadow-2xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform duration-75 relative z-10 select-none">
                         <div class="text-center pointer-events-none">
                             <span class="text-sm text-slate-400 font-black tracking-widest block uppercase">CUP</span>
-                            <!-- 통 내부에 든 주사위 개수 표시 -->
                             <div class="flex gap-1 justify-center mt-2" id="cup-inside-indicators"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 이모티콘 소통 바 (어느 플레이어든 누르면 실시간 반응) -->
+                <!-- 이모티콘 바 (누구든 누르면 바로 전송 가능하도록 전역 처리) -->
                 <div class="w-full bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
                     <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
                     <div class="flex justify-between gap-1">
@@ -222,7 +224,7 @@
     <div id="score-confirm-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border-2 border-emerald-500 w-full max-w-sm rounded-xl p-6 shadow-2xl text-center">
             <h3 class="text-lg font-bold text-emerald-400 mb-2">🎲 점수 기입 확정</h3>
-            <p id="score-confirm-text" class="text-slate-300 text-sm mb-6">점수는 N점입니다. 점수를 기입하겠습니까?</p>
+            <p id="score-confirm-text" class="text-slate-300 text-sm mb-6">점수 기입을 확정하겠습니까?</p>
             <div class="flex gap-3 justify-center">
                 <button id="score-confirm-cancel" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold transition-all">취소</button>
                 <button id="score-confirm-ok" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white transition-all">기입하기</button>
@@ -230,27 +232,28 @@
         </div>
     </div>
 
-    <!-- 하단 라이선스 -->
     <footer class="py-3 text-center text-[10px] text-slate-600 bg-slate-950 border-t border-slate-900">
         PREMIUM YACHT DICE CO. &copy; 2026. All rights reserved.
     </footer>
 
-    <!-- 게임 구동 핵심 스크립트 -->
+    <!-- 게임 구동 및 Socket.io 이벤트 핸들링 스크립트 -->
     <script>
+        const socket = io();
+
         const GAME = {
+            roomCode: null,
             players: [],          
-            shuffledOrder: [],    
             currentPlayerIdx: 0,  
             currentRound: 1,      
             rollsLeft: 3,
             isRolling: false,
-            // 주사위 5개 데이터
+            // 5개 주사위 서버 데이터 동기화용 배열
             dice: [
-                { id: 1, value: 1, held: false, isFiled: false },
-                { id: 2, value: 1, held: false, isFiled: false },
-                { id: 3, value: 1, held: false, isFiled: false },
-                { id: 4, value: 1, held: false, isFiled: false },
-                { id: 5, value: 1, held: false, isFiled: false }
+                { value: 1, held: false },
+                { value: 1, held: false },
+                { value: 1, held: false },
+                { value: 1, held: false },
+                { value: 1, held: false }
             ],
             selectedCatToConfirm: null
         };
@@ -270,178 +273,296 @@
             { id: 'yacht', name: '요트 (Yacht)', desc: '동일 눈 5개 (50점)' }
         ];
 
-        function initCreateRoom() {
+        // 대기방 UI 조작
+        function showJoinInput() {
             document.getElementById('lobby-buttons').classList.add('hidden');
+            document.getElementById('join-input-area').classList.remove('hidden');
+        }
+
+        // 방 만들기 (서버 이벤트 요청)
+        function createRoom() {
+            const nameInput = document.getElementById('nickname-input');
+            const name = nameInput.value.trim();
+            if (!name) return alert("닉네임을 입력해 주세요.");
+
+            socket.emit('createRoom', { name });
+        }
+
+        // 방 참가하기 (서버 이벤트 요청)
+        function joinRoom() {
+            const nameInput = document.getElementById('nickname-input');
+            const codeInput = document.getElementById('room-code-input');
+            const name = nameInput.value.trim();
+            const roomCode = codeInput.value.trim().toUpperCase();
+
+            if (!name) return alert("닉네임을 입력해 주세요.");
+            if (!roomCode) return alert("방 코드를 입력해 주세요.");
+
+            socket.emit('joinRoom', { roomCode, name });
+        }
+
+        // 방장 권한의 게임 시작
+        function startGame() {
+            socket.emit('startGame');
+        }
+
+        // --- Socket.io 서버 응답 수신 처리 ---
+
+        socket.on('roomCreated', ({ roomCode, players }) => {
+            GAME.roomCode = roomCode;
+            document.getElementById('display-room-code').textContent = roomCode;
+            document.getElementById('room-info-display').classList.remove('hidden');
+            document.getElementById('lobby-buttons').classList.add('hidden');
+            document.getElementById('join-input-area').classList.add('hidden');
             document.getElementById('room-setup').classList.remove('hidden');
-        }
+            updateLobbyUI(players);
+        });
 
-        function initJoinRoom() {
-            alert("로컬 가상 방 모드로 진입합니다. 친구들의 이름을 입력해 하나의 브라우저에서 멀티플레이가 가능합니다.");
-            initCreateRoom();
-        }
+        socket.on('roomUpdated', ({ players }) => {
+            updateLobbyUI(players);
+        });
 
-        function addPlayer() {
-            const input = document.getElementById('player-name-input');
-            const name = input.value.trim();
-            if (!name) return;
-            if (GAME.players.length >= 6) {
-                alert("최대 6명까지만 방에 들어올 수 있습니다.");
-                return;
+        socket.on('joinError', (msg) => {
+            alert(msg);
+        });
+
+        // 멀티플레이 카드 뽑기 스테이지 시작
+        socket.on('startCardSelection', ({ playerCount }) => {
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('card-selection-screen').classList.remove('hidden');
+            renderSetupCards(playerCount);
+        });
+
+        // 실시간 타 플레이어의 카드 선택 상태 동기화
+        socket.on('cardSelected', ({ cardIndex, playerName, playerId }) => {
+            const targetCard = document.querySelector(`[data-card-index="${cardIndex}"]`);
+            if (targetCard) {
+                targetCard.classList.add('opacity-40', 'pointer-events-none');
+                targetCard.querySelector('.select-status').textContent = `${playerName} 선택`;
             }
+        });
 
-            const newPlayer = {
-                id: 'p_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                name: name,
-                avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
-                scores: {
-                    aces: null, deuces: null, threes: null, fours: null, fives: null, hexas: null,
-                    choice: null, fourOfAKind: null, fullHouse: null,
-                    smallStraight: null, largeStraight: null, yacht: null
+        // 카드 뒤집기 공개 및 실제 인게임 필드로 진입
+        socket.on('revealCards', ({ players, cardValues, selections }) => {
+            GAME.players = players;
+            
+            // 전 카드를 순차적으로 뒤집는 시각적 연출
+            document.querySelectorAll('.card-inner').forEach(inner => {
+                const idx = inner.parentElement.getAttribute('data-card-index');
+                const orderNum = cardValues[idx];
+                
+                // 해당 카드를 고른 플레이어 정보 찾기
+                let chooserName = "미선택";
+                let avatar = "https://api.dicebear.com/7.x/bottts/svg?seed=default";
+                Object.entries(selections).forEach(([pId, selIdx]) => {
+                    if (Number(selIdx) === Number(idx)) {
+                        const playerObj = GAME.players.find(p => p.id === pId);
+                        if (playerObj) {
+                            chooserName = playerObj.name;
+                            avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(playerObj.name)}`;
+                        }
+                    }
+                });
+
+                inner.querySelector('.back-card-name').textContent = chooserName;
+                inner.querySelector('.back-card-avatar').src = avatar;
+                inner.querySelector('.back-card-rank').textContent = `${orderNum}순위`;
+                inner.classList.add('card-flipped');
+            });
+
+            setTimeout(() => {
+                document.getElementById('card-selection-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+                setupGamePlay();
+            }, 3000);
+        });
+
+        // 1인 플레이(카드 셔플 불필요) 시 바로 게임 시작 수신
+        socket.on('gameStarted', ({ players, currentTurnIdx }) => {
+            GAME.players = players;
+            GAME.currentPlayerIdx = currentTurnIdx;
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            setupGamePlay();
+        });
+
+        // 주사위 흔드는 시각 효과 (서버에서 shakeCup 이벤트를 브로드캐스트 받았을 때)
+        socket.on('shakingCup', ({ playerId }) => {
+            const shaker = GAME.players.find(p => p.id === playerId);
+            if (shaker) {
+                triggerEmoji('🎲'); // 전역 이모티콘 소통 함수 활용해 연출
+            }
+            const cup = document.getElementById('dice-cup');
+            cup.classList.add('cup-shaking');
+        });
+
+        // 주사위 롤링 연산 처리 완료 수신
+        socket.on('diceRolled', ({ dice, rollCount }) => {
+            const cup = document.getElementById('dice-cup');
+            cup.classList.remove('cup-shaking');
+
+            GAME.dice = dice;
+            GAME.rollsLeft = 3 - rollCount;
+            
+            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
+            document.getElementById('early-stop-btn').disabled = (GAME.rollsLeft === 0);
+
+            // 필드 주사위 흔들기 시각 효과 연출
+            GAME.isRolling = true;
+            let steps = 0;
+            const rollInterval = setInterval(() => {
+                renderRollFieldVisuals(true); // 굴러가는 가상 눈 표시
+                steps++;
+                if (steps > 6) {
+                    clearInterval(rollInterval);
+                    GAME.isRolling = false;
+                    syncDiceStatus(); // 최종 주사위 정적인 눈 렌더링
+                    calculateAllPotentialScores();
+                    triggerDopamineEffects();
                 }
-            };
+            }, 80);
+        });
 
-            GAME.players.push(newPlayer);
-            input.value = '';
-            updateLobbyUI();
-        }
+        // 주사위 보관용 홈 토글 동기화 수신
+        socket.on('dieToggled', ({ index, dice }) => {
+            GAME.dice = dice;
+            syncDiceStatus();
+            calculateAllPotentialScores();
+        });
 
-        function updateLobbyUI() {
+        // 조기 중단(리롤 스톱) 동기화 수신
+        socket.on('reRollStopped', ({ dice }) => {
+            GAME.dice = dice;
+            GAME.rollsLeft = 0;
+            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
+            document.getElementById('early-stop-btn').disabled = true;
+            syncDiceStatus();
+            calculateAllPotentialScores();
+        });
+
+        // 점수 기입 기록 완료 수신
+        socket.on('scoreRecorded', ({ playerId, category, score, scoreBoard }) => {
+            const targetPlayer = GAME.players.find(p => p.id === playerId);
+            if (targetPlayer) {
+                targetPlayer.scoreBoard = scoreBoard;
+            }
+            renderScoreboard();
+        });
+
+        // 다음 차례/라운드 전환 수신
+        socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
+            GAME.currentPlayerIdx = currentTurnIdx;
+            GAME.currentRound = round;
+            GAME.dice = gameState.dice;
+            GAME.rollsLeft = 3 - gameState.rollCount;
+
+            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
+            document.getElementById('early-stop-btn').disabled = true;
+            
+            renderPlayerProfiles();
+            syncDiceStatus();
+            renderScoreboard();
+        });
+
+        // 실시간 이모티콘 팝업 수신 (서버에서 받아서 해당 플레이어 머리 위에 표시)
+        socket.on('emojiReceived', ({ playerId, emoji }) => {
+            const bubble = document.getElementById(`emoji-bubble-${playerId}`);
+            if (bubble) {
+                bubble.textContent = emoji;
+                bubble.style.opacity = '1';
+                setTimeout(() => {
+                    bubble.style.opacity = '0';
+                }, 2000);
+            }
+        });
+
+        // 최종 게임 종료 전적 수신
+        socket.on('gameFinished', ({ players }) => {
+            declareGameOverAndRank(players);
+        });
+
+
+        // --- 인게임 UI 렌더링 및 인터랙션 컨트롤러 ---
+
+        function updateLobbyUI(players) {
             const listContainer = document.getElementById('player-list');
             const countEl = document.getElementById('player-count');
             const startBtn = document.getElementById('start-game-btn');
 
             listContainer.innerHTML = '';
-            GAME.players.forEach((p, idx) => {
+            players.forEach((p, idx) => {
                 const li = document.createElement('li');
                 li.className = "flex items-center justify-between py-1.5 px-3 bg-slate-900 rounded border border-slate-700 text-sm";
+                const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(p.name)}`;
                 li.innerHTML = `
                     <div class="flex items-center gap-2">
-                        <img src="${p.avatar}" class="w-6 h-6 rounded bg-slate-700" />
+                        <img src="${avatar}" class="w-6 h-6 rounded bg-slate-700" />
                         <span class="font-bold">${p.name}</span>
-                        ${idx === 0 ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded border border-amber-500/30">방장</span>' : ''}
+                        ${p.isHost ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-1 rounded border border-amber-500/30">방장</span>' : ''}
                     </div>
-                    <button onclick="removePlayer(${idx})" class="text-red-400 hover:text-red-300 text-xs font-bold">삭제</button>
                 `;
                 listContainer.appendChild(li);
             });
 
-            countEl.textContent = GAME.players.length;
-            startBtn.disabled = GAME.players.length === 0;
-            if (GAME.players.length > 0) {
-                startBtn.textContent = `게임 시작 (${GAME.players.length}인)`;
+            countEl.textContent = players.length;
+            
+            // 내가 방장인지 체크하여 시작 버튼 상태 부여
+            const myPlayer = players.find(p => p.id === socket.id);
+            if (myPlayer && myPlayer.isHost) {
+                startBtn.removeAttribute('disabled');
+                startBtn.textContent = `게임 시작 (${players.length}인)`;
             } else {
-                startBtn.textContent = '게임 시작 (플레이어 필요)';
+                startBtn.setAttribute('disabled', 'true');
+                startBtn.textContent = '방장의 시작을 기다리는 중...';
             }
         }
 
-        function removePlayer(idx) {
-            GAME.players.splice(idx, 1);
-            updateLobbyUI();
-        }
-
-        function startGame() {
-            document.getElementById('lobby-screen').classList.add('hidden');
-            if (GAME.players.length === 1) {
-                GAME.shuffledOrder = [0];
-                setupGamePlay();
-            } else {
-                document.getElementById('card-selection-screen').classList.remove('hidden');
-                renderSetupCards();
-            }
-        }
-
-        function renderSetupCards() {
+        // 순서 정하기 단계: 선택할 빈 카드 그리드 그리기
+        function renderSetupCards(playerCount) {
             const container = document.getElementById('card-container');
             container.innerHTML = '';
-            let cardsSelected = 0;
-
-            const slots = GAME.players.map((_, i) => i);
-            const shuffledSlots = [...slots].sort(() => Math.random() - 0.5);
-
-            GAME.players.forEach((player, idx) => {
-                const orderNum = shuffledSlots[idx] + 1;
-
+            
+            for (let i = 0; i < playerCount; i++) {
                 const card = document.createElement('div');
-                card.className = "w-28 h-40 cursor-pointer group perspective-600";
+                card.className = "w-28 h-40 cursor-pointer group perspective-600 relative";
+                card.setAttribute('data-card-index', i);
                 card.innerHTML = `
-                    <div class="card-inner relative w-full h-full text-center rounded-xl border border-slate-700 shadow-xl bg-slate-950 transition-all duration-500" data-order="${orderNum}" data-player-idx="${idx}">
+                    <div class="card-inner relative w-full h-full text-center rounded-xl border border-slate-700 shadow-xl bg-slate-950 transition-all duration-500">
+                        <!-- 앞면 -->
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-slate-950 flex flex-col items-center justify-center backface-hidden p-2">
                             <span class="text-slate-600 text-4xl mb-2">♠</span>
-                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">클릭하여 뒤집기</span>
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider select-status">카드 뽑기</span>
                         </div>
+                        <!-- 뒷면 (결과 공개용) -->
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-slate-900 border-2 border-emerald-500 flex flex-col items-center justify-center rotate-y-180 backface-hidden p-2">
-                            <img src="${player.avatar}" class="w-10 h-10 rounded-full bg-slate-800 mb-1" />
-                            <span class="text-xs font-bold text-slate-300 truncate max-w-full">${player.name}</span>
-                            <span class="text-xl font-black text-emerald-400 mt-2">${orderNum}순위</span>
+                            <img class="w-10 h-10 rounded-full bg-slate-800 mb-1 back-card-avatar" src="" />
+                            <span class="text-xs font-bold text-slate-300 truncate max-w-full back-card-name">이름</span>
+                            <span class="text-xl font-black text-emerald-400 mt-2 back-card-rank">0순위</span>
                         </div>
                     </div>
                 `;
 
-                card.addEventListener('click', function select() {
-                    const inner = card.querySelector('.card-inner');
-                    if (inner.classList.contains('card-flipped')) return;
-
-                    inner.classList.add('card-flipped');
-                    cardsSelected++;
-
-                    if (cardsSelected === GAME.players.length) {
-                        document.getElementById('next-to-game-btn').classList.remove('hidden');
-                    }
-                }, { once: true });
+                card.addEventListener('click', () => {
+                    socket.emit('selectCard', { cardIndex: i });
+                });
 
                 container.appendChild(card);
-            });
-        }
-
-        function revealAllCardsAndStart() {
-            const cardInners = document.querySelectorAll('.card-inner');
-            const results = [];
-            cardInners.forEach(el => {
-                results.push({
-                    playerIdx: parseInt(el.getAttribute('data-player-idx')),
-                    order: parseInt(el.getAttribute('data-order'))
-                });
-            });
-
-            results.sort((a, b) => a.order - b.order);
-            GAME.shuffledOrder = results.map(r => r.playerIdx);
-            GAME.currentPlayerIdx = 0;
-
-            document.getElementById('card-selection-screen').classList.add('hidden');
-            setupGamePlay();
+            }
         }
 
         function setupGamePlay() {
-            document.getElementById('game-screen').classList.remove('hidden');
-            initTurn();
-        }
-
-        function initTurn() {
-            GAME.rollsLeft = 3;
-            GAME.isRolling = false;
-            
-            GAME.dice.forEach(d => {
-                d.held = false;
-                d.isFiled = false;
-            });
-
-            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
-            document.getElementById('early-stop-btn').disabled = true;
-
             renderPlayerProfiles();
-            renderHoldHome();
-            renderRollField();
+            syncDiceStatus();
             renderScoreboard();
-            updateCupInsideIndicators();
         }
 
         function renderPlayerProfiles() {
             const container = document.getElementById('player-profiles-row');
             container.innerHTML = '';
 
-            GAME.shuffledOrder.forEach((playerIdx, seqIdx) => {
-                const p = GAME.players[playerIdx];
+            GAME.players.forEach((p, seqIdx) => {
                 const isCurrent = seqIdx === GAME.currentPlayerIdx;
+                const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(p.name)}`;
 
                 const avatarEl = document.createElement('div');
                 avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[70px] relative transition-all duration-300
@@ -449,29 +570,19 @@
                 
                 avatarEl.innerHTML = `
                     <div id="emoji-bubble-${p.id}" class="absolute -top-10 bg-white text-slate-900 text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
-                    <img src="${p.avatar}" class="w-10 h-10 rounded-full bg-slate-800" />
+                    <img src="${avatar}" class="w-10 h-10 rounded-full bg-slate-800" />
                     <span class="text-[10px] font-bold mt-1 text-slate-300 truncate max-w-[60px]">${p.name}</span>
                 `;
                 container.appendChild(avatarEl);
             });
         }
 
-        // --- 이모티콘 바 작동 개선: 전원 즉각 팝업 노출 ---
+        // --- 이모티콘 바 작동 개선: 누르면 서버로 즉각 전송 ---
         function triggerEmoji(emoji) {
-            // 현재 활성화된 플레이어의 돔을 가져와 바로 표현
-            const curPlayerIdx = GAME.shuffledOrder[GAME.currentPlayerIdx];
-            const p = GAME.players[curPlayerIdx];
-            const bubble = document.getElementById(`emoji-bubble-${p.id}`);
-            if (!bubble) return;
-
-            bubble.textContent = emoji;
-            bubble.style.opacity = '1';
-            
-            setTimeout(() => {
-                bubble.style.opacity = '0';
-            }, 2000);
+            socket.emit('sendEmoji', { emoji });
         }
 
+        // 컵 내부 보관중인 주사위(unheld)를 시각적으로 카운트
         function updateCupInsideIndicators() {
             const container = document.getElementById('cup-inside-indicators');
             container.innerHTML = '';
@@ -484,7 +595,7 @@
             }
         }
 
-        // SVG 주사위 눈 정밀 렌더링
+        // 주사위 SVG 생성기
         function generateDiceHTML(value, colorClass = "bg-white") {
             const dotsLayout = {
                 1: [[50, 50]],
@@ -512,175 +623,135 @@
             `;
         }
 
-        // --- 홀드 홈 (Hold Home) 업데이트 ---
-        function renderHoldHome() {
-            const container = document.getElementById('hold-home');
-            container.innerHTML = ''; // 빈 상자 칸 표시 일절 제거
-
-            const heldDice = GAME.dice.filter(d => d.held);
-
-            if (heldDice.length === 0) {
-                container.innerHTML = `<span class="text-red-200 text-xs font-semibold">보관된 주사위가 없습니다.</span>`;
-            } else {
-                heldDice.forEach(die => {
-                    const dieDiv = document.createElement('div');
-                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-slate-100 border-slate-300");
-                    
-                    // 홈에 있는 주사위 클릭 시 -> 필드로 다시 복귀
-                    dieDiv.firstChild.addEventListener('click', () => {
-                        if (GAME.isRolling) return;
-                        die.held = false;
-                        die.isFiled = true;
-                        renderHoldHome();
-                        renderRollField();
-                        updateCupInsideIndicators();
-                        calculateAllPotentialScores();
-                    });
-
-                    container.appendChild(dieDiv.firstChild);
-                });
-            }
-        }
-
-        // --- 게임 필드 (Roll Field) 업데이트 ---
-        function renderRollField() {
+        // --- 주사위 동기화 (검정 홀드 홈 5칸 구조 보존) ---
+        function syncDiceStatus() {
+            const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
             const emptyMsg = document.getElementById('field-empty-msg');
+
+            // 1. 홀드 홈 초기화 (기본 빈 5칸 슬롯 생성)
+            homeContainer.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const slot = document.createElement('div');
+                slot.className = "border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center";
+                homeContainer.appendChild(slot);
+            }
+
+            // 2. 필드 초기화
             fieldWrapper.innerHTML = '';
 
-            const activeFieldDice = GAME.dice.filter(d => !d.held && d.isFiled);
+            let hasFieldDice = false;
+            let currentHomeSlotIdx = 0;
 
-            if (activeFieldDice.length === 0) {
-                emptyMsg.classList.remove('hidden');
-            } else {
-                emptyMsg.classList.add('hidden');
-                activeFieldDice.forEach(die => {
-                    const dieDiv = document.createElement('div');
-                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
-                    
-                    // 필드에 있는 주사위 클릭 시 -> 보관용 홀드 홈(Hold Home)으로 이동 (킵 기능)
-                    dieDiv.firstChild.addEventListener('click', () => {
-                        if (GAME.isRolling) return;
-                        die.held = true;
-                        die.isFiled = false;
-                        renderHoldHome();
-                        renderRollField();
-                        updateCupInsideIndicators();
-                        calculateAllPotentialScores();
-                    });
+            GAME.dice.forEach((die, idx) => {
+                const isMyTurn = GAME.players[GAME.currentPlayerIdx].id === socket.id;
 
-                    fieldWrapper.appendChild(dieDiv.firstChild);
-                });
-            }
-        }
-
-        // --- 컵 클릭 및 드래그 제어 정밀화 ---
-        const cupEl = document.getElementById('dice-cup');
-        let isDragging = false;
-        let shakeCounter = 0;
-
-        // 마우스 클릭 시 가볍게 작동 보장
-        cupEl.addEventListener('click', () => {
-            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            triggerCupShakeEffect();
-        });
-
-        // 드래그앤드롭 이벤트 바인딩
-        cupEl.addEventListener('mousedown', (e) => {
-            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            isDragging = true;
-            shakeCounter = 0;
-            cupEl.classList.add('cup-shaking');
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            shakeCounter++;
-        });
-
-        window.addEventListener('mouseup', () => {
-            if (!isDragging) return;
-            isDragging = false;
-            cupEl.classList.remove('cup-shaking');
-            
-            // 살짝이라도 드래그가 이루어졌거나 클릭했다면 주사위 투하
-            triggerCupShakeEffect();
-        });
-
-        // 모바일 터치 대응
-        cupEl.addEventListener('touchstart', () => {
-            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            isDragging = true;
-            cupEl.classList.add('cup-shaking');
-        }, { passive: true });
-
-        window.addEventListener('touchend', () => {
-            if (!isDragging) return;
-            isDragging = false;
-            cupEl.classList.remove('cup-shaking');
-            triggerCupShakeEffect();
-        });
-
-        function triggerCupShakeEffect() {
-            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            rollSequence();
-        }
-
-        // --- 주사위 쏟아내기 코어 시퀀스 ---
-        function rollSequence() {
-            GAME.isRolling = true;
-            GAME.rollsLeft--;
-
-            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
-            document.getElementById('early-stop-btn').disabled = false;
-
-            cupEl.classList.add('cup-shaking');
-
-            let steps = 0;
-            const rollInterval = setInterval(() => {
-                GAME.dice.forEach(d => {
-                    if (!d.held) {
-                        d.value = Math.floor(Math.random() * 6) + 1;
-                        d.isFiled = true; 
+                if (die.held) {
+                    // 홈 영역의 빈 슬롯 칸을 순서대로 실제 주사위로 채움
+                    const slots = homeContainer.children;
+                    if (slots[currentHomeSlotIdx]) {
+                        const dieDiv = document.createElement('div');
+                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-slate-100 border-slate-300");
+                        
+                        // 홈 주사위 클릭 시 -> 서버에 토글 요청 전송
+                        if (isMyTurn) {
+                            dieDiv.firstChild.addEventListener('click', () => {
+                                if (GAME.isRolling) return;
+                                socket.emit('toggleDie', { index: idx });
+                            });
+                        }
+                        slots[currentHomeSlotIdx].replaceWith(dieDiv.firstChild);
+                        currentHomeSlotIdx++;
                     }
-                });
-                renderRollField();
-                steps++;
-
-                if (steps > 12) {
-                    clearInterval(rollInterval);
-                    cupEl.classList.remove('cup-shaking');
-                    GAME.isRolling = false;
-                    
-                    updateCupInsideIndicators();
-                    renderRollField();
-                    calculateAllPotentialScores();
-                    triggerDopamineEffects();
-                }
-            }, 80);
-        }
-
-        function triggerEarlyStop() {
-            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            
-            GAME.rollsLeft = 0;
-            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
-            document.getElementById('early-stop-btn').disabled = true;
-
-            GAME.dice.forEach(d => {
-                if (d.isFiled) {
-                    d.held = true;
-                    d.isFiled = false;
+                } else {
+                    // 주사위를 1회라도 리롤하여 서버 카운트가 돌았을 때만 필드에 렌더링
+                    const isRolledAtLeastOnce = (GAME.rollsLeft < 3);
+                    if (isRolledAtLeastOnce) {
+                        hasFieldDice = true;
+                        const dieDiv = document.createElement('div');
+                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
+                        
+                        // 필드 주사위 클릭 시 -> 서버에 토글 요청 전송 (홈으로 이동)
+                        if (isMyTurn) {
+                            dieDiv.firstChild.addEventListener('click', () => {
+                                if (GAME.isRolling) return;
+                                socket.emit('toggleDie', { index: idx });
+                            });
+                        }
+                        fieldWrapper.appendChild(dieDiv.firstChild);
+                    }
                 }
             });
 
-            renderHoldHome();
-            renderRollField();
+            if (hasFieldDice) {
+                emptyMsg.classList.add('hidden');
+            } else {
+                emptyMsg.classList.remove('hidden');
+            }
+
             updateCupInsideIndicators();
-            calculateAllPotentialScores();
         }
 
-        // 족보 점수 연산
+        // 리롤 중 굴러가는 역동적인 눈 렌더링 연출용 함수
+        function renderRollFieldVisuals(fake = false) {
+            if (!fake) return;
+            const fieldWrapper = document.getElementById('field-dice-wrapper');
+            fieldWrapper.innerHTML = '';
+
+            GAME.dice.forEach((die) => {
+                if (!die.held) {
+                    const randomVal = Math.floor(Math.random() * 6) + 1;
+                    const dieDiv = document.createElement('div');
+                    dieDiv.innerHTML = generateDiceHTML(randomVal, "bg-white");
+                    fieldWrapper.appendChild(dieDiv.firstChild);
+                }
+            });
+        }
+
+        // --- 컵 인터랙션 이벤트 바인딩 (PC 클릭 및 모바일 터치 대응) ---
+        const cupEl = document.getElementById('dice-cup');
+
+        // 단순 마우스 클릭/PC
+        cupEl.addEventListener('click', () => {
+            if (GAME.isRolling) return;
+            triggerCupShakeEffect();
+        });
+
+        // 모바일 터치 (스크롤 간섭 차단 및 반응성 극대화)
+        cupEl.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (GAME.isRolling) return;
+            triggerCupShakeEffect();
+        }, { passive: false });
+
+        function triggerCupShakeEffect() {
+            const isMyTurn = GAME.players[GAME.currentPlayerIdx].id === socket.id;
+            if (!isMyTurn) {
+                alert("본인의 차례가 아닙니다!");
+                return;
+            }
+            if (GAME.rollsLeft <= 0) {
+                alert("남은 리롤 기회가 없습니다!");
+                return;
+            }
+
+            // 흔드는 신호 서버에 전송 후 바로 주사위 던지기 요청
+            socket.emit('shakeCup');
+            setTimeout(() => {
+                socket.emit('rollDice');
+            }, 300);
+        }
+
+        // 조기 리롤 중단 (필드 주사위를 전부 홈으로 밀고 횟수 차단)
+        function triggerEarlyStop() {
+            const isMyTurn = GAME.players[GAME.currentPlayerIdx].id === socket.id;
+            if (!isMyTurn) return;
+            if (GAME.rollsLeft === 3) return alert("최소 1회는 굴려야 합니다.");
+
+            socket.emit('stopReRoll');
+        }
+
+        // 족보 가상 점수 계산기
         function getComputedScore(catId, values) {
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
@@ -718,12 +789,13 @@
             const body = document.getElementById('yacht-scoreboard-body');
             body.innerHTML = '';
 
-            const currentActivePlayer = GAME.players[GAME.shuffledOrder[GAME.currentPlayerIdx]];
+            const currentActivePlayer = GAME.players[GAME.currentPlayerIdx];
+            const isMyTurn = currentActivePlayer.id === socket.id;
             document.getElementById('scoreboard-target-header').textContent = `${currentActivePlayer.name}의 보드`;
 
             CATEGORIES.forEach(cat => {
-                const writtenScore = currentActivePlayer.scores[cat.id];
-                const hasScore = writtenScore !== null;
+                const writtenScore = currentActivePlayer.scoreBoard[cat.id];
+                const hasScore = writtenScore !== undefined;
 
                 const tr = document.createElement('tr');
                 tr.className = `border-b border-slate-700/50 transition-all ${hasScore ? 'bg-slate-900/40 opacity-80' : 'hover:bg-slate-700/30 cursor-pointer'}`;
@@ -739,7 +811,7 @@
                     </td>
                 `;
 
-                if (!hasScore) {
+                if (!hasScore && isMyTurn) {
                     tr.addEventListener('click', () => triggerSelectCategory(cat.id));
                 }
 
@@ -752,11 +824,11 @@
         function calculateAllPotentialScores() {
             if (GAME.rollsLeft === 3) return;
 
-            const currentActivePlayer = GAME.players[GAME.shuffledOrder[GAME.currentPlayerIdx]];
+            const currentActivePlayer = GAME.players[GAME.currentPlayerIdx];
             const values = GAME.dice.map(d => d.value);
 
             CATEGORIES.forEach(cat => {
-                if (currentActivePlayer.scores[cat.id] === null) {
+                if (currentActivePlayer.scoreBoard[cat.id] === undefined) {
                     const previewScore = getComputedScore(cat.id, values);
                     const cell = document.getElementById(`td-score-${cat.id}`);
                     if (cell) {
@@ -768,20 +840,19 @@
 
         function triggerSelectCategory(catId) {
             if (GAME.rollsLeft === 3) {
-                alert("주사위를 한 번 이상 굴려야 기록할 수 있습니다!");
+                alert("주사위를 최소 한 번 이상 굴린 후 기입할 수 있습니다!");
                 return;
             }
             if (GAME.isRolling) return;
 
-            const currentActivePlayer = GAME.players[GAME.shuffledOrder[GAME.currentPlayerIdx]];
-            if (currentActivePlayer.scores[catId] !== null) return;
+            const currentActivePlayer = GAME.players[GAME.currentPlayerIdx];
+            if (currentActivePlayer.scoreBoard[catId] !== undefined) return;
 
             const values = GAME.dice.map(d => d.value);
             const calculated = getComputedScore(catId, values);
-
             const targetCategory = CATEGORIES.find(c => c.id === catId);
             
-            GAME.selectedCatToConfirm = catId;
+            GAME.selectedCatToConfirm = { catId, score: calculated };
             document.getElementById('score-confirm-text').innerHTML = `
                 [ ${targetCategory.name} ] 항목에 기입될 점수는 <strong class="text-emerald-400 text-lg">${calculated}점</strong>입니다.<br>
                 정말 이 점수를 확정하여 기입하시겠습니까?
@@ -798,39 +869,20 @@
         document.getElementById('score-confirm-ok').addEventListener('click', () => {
             if (!GAME.selectedCatToConfirm) return;
             
-            const currentActivePlayer = GAME.players[GAME.shuffledOrder[GAME.currentPlayerIdx]];
-            const values = GAME.dice.map(d => d.value);
-            const finalScore = getComputedScore(GAME.selectedCatToConfirm, values);
+            const { catId, score } = GAME.selectedCatToConfirm;
 
-            currentActivePlayer.scores[GAME.selectedCatToConfirm] = finalScore;
-            
+            // 서버 측에 점수 확정 요청 전송 (서버에서 기록 후 턴을 변경해 줌)
+            socket.emit('recordScore', { category: catId, score });
+
             document.getElementById('score-confirm-modal').classList.add('hidden');
             GAME.selectedCatToConfirm = null;
-
-            proceedToNextTurn();
         });
-
-        function proceedToNextTurn() {
-            GAME.currentPlayerIdx++;
-            
-            if (GAME.currentPlayerIdx >= GAME.shuffledOrder.length) {
-                GAME.currentPlayerIdx = 0;
-                GAME.currentRound++;
-            }
-
-            if (GAME.currentRound > 12) {
-                declareGameOverAndRank();
-                return;
-            }
-
-            initTurn();
-        }
 
         function updatePlayerSummaryStats(player) {
             const subtotalKeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
             let subtotal = 0;
             subtotalKeys.forEach(k => {
-                subtotal += (player.scores[k] || 0);
+                subtotal += (player.scoreBoard[k] || 0);
             });
 
             const earnedBonus = subtotal >= 63;
@@ -845,13 +897,14 @@
             }
 
             let total = earnedBonus ? 35 : 0;
-            Object.keys(player.scores).forEach(k => {
-                total += (player.scores[k] || 0);
+            Object.keys(player.scoreBoard).forEach(k => {
+                total += (player.scoreBoard[k] || 0);
             });
 
             document.getElementById('current-total-score').textContent = total;
         }
 
+        // 극적 도파민 효과 (폭죽 등)
         function triggerDopamineEffects() {
             const values = GAME.dice.map(d => d.value);
             const counts = Array(7).fill(0);
@@ -869,10 +922,6 @@
                     spawnFireworksCelebration("💎 고득점 풀하우스 달성! 💣");
                     return;
                 }
-            }
-
-            if (counts[6] >= 4) {
-                spawnFireworksCelebration("🌟 식스 쿼드 달성! 보너스 찬스! 🌟");
             }
         }
 
@@ -928,8 +977,7 @@
             headerRow.className = "bg-slate-900 border-b border-slate-700 text-slate-400";
             headerRow.innerHTML = `<th class="py-2 px-3 font-bold border-r border-slate-700">족보 이름</th>`;
             
-            GAME.shuffledOrder.forEach(playerIdx => {
-                const p = GAME.players[playerIdx];
+            GAME.players.forEach(p => {
                 headerRow.innerHTML += `<th class="py-2 px-3 font-bold text-center border-r border-slate-700">${p.name}</th>`;
             });
             thead.appendChild(headerRow);
@@ -943,10 +991,9 @@
                 tr.className = "hover:bg-slate-700/20";
                 tr.innerHTML = `<td class="py-2 px-3 text-slate-300 font-semibold border-r border-slate-700">${cat.name}</td>`;
 
-                GAME.shuffledOrder.forEach(playerIdx => {
-                    const p = GAME.players[playerIdx];
-                    const val = p.scores[cat.id];
-                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== null ? val : '-'}</td>`;
+                GAME.players.forEach(p => {
+                    const val = p.scoreBoard[cat.id];
+                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== undefined ? val : '-'}</td>`;
                 });
                 tbody.appendChild(tr);
             });
@@ -955,14 +1002,13 @@
             totalTr.className = "bg-slate-950 font-bold border-t border-slate-600";
             totalTr.innerHTML = `<td class="py-2 px-3 text-emerald-400 border-r border-slate-700">총합 누계</td>`;
 
-            GAME.shuffledOrder.forEach(playerIdx => {
-                const p = GAME.players[playerIdx];
+            GAME.players.forEach(p => {
                 const keys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
                 let subt = 0;
-                keys.forEach(k => subt += (p.scores[k] || 0));
+                keys.forEach(k => subt += (p.scoreBoard[k] || 0));
                 
                 let tot = (subt >= 63) ? 35 : 0;
-                Object.keys(p.scores).forEach(k => tot += (p.scores[k] || 0));
+                Object.keys(p.scoreBoard).forEach(k => tot += (p.scoreBoard[k] || 0));
 
                 totalTr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-emerald-400 font-black">${tot}점</td>`;
             });
@@ -970,14 +1016,14 @@
             table.appendChild(tbody);
         }
 
-        function declareGameOverAndRank() {
-            const rankingList = GAME.players.map(p => {
+        function declareGameOverAndRank(finalPlayers) {
+            const rankingList = finalPlayers.map(p => {
                 const keys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
                 let subt = 0;
-                keys.forEach(k => subt += (p.scores[k] || 0));
+                keys.forEach(k => subt += (p.scoreBoard[k] || 0));
                 
                 let tot = (subt >= 63) ? 35 : 0;
-                Object.keys(p.scores).forEach(k => tot += (p.scores[k] || 0));
+                Object.keys(p.scoreBoard).forEach(k => tot += (p.scoreBoard[k] || 0));
 
                 return { name: p.name, total: tot };
             });
@@ -992,8 +1038,6 @@
             alert(resultMessage);
             window.location.reload();
         }
-
-        updateLobbyUI();
     </script>
 </body>
 </html>
