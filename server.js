@@ -1,474 +1,310 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 const path = require('path');
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
-
-// 최상위 폴더(__dirname) 자체를 정적 파일 폴더로 지정
 app.use(express.static(__dirname));
 
-// 누군가 접속했을 때 최상위에 있는 index.html을 바로 보내줍니다.
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const rooms = {}; 
+// 방 데이터 구조
+// rooms[roomCode] = {
+//    id: roomCode,
+//    players: [{ id, name, isHost, scoreBoard, orderCard, order }],
+//    status: 'lobby' | 'card_selection' | 'playing' | 'finished',
+//    currentTurnIdx: 0,
+//    round: 1, // 총 12라운드
+//    gameState: { dice: [], kept: [], rollCount: 0, status: 'shaking' | 'rolled' | 'choosing' },
+//    emojis: []
+// }
+const rooms = {};
 
-// 유저가 직접 채우는 순수 족보 12칸 정의 (종료 판정용)
-const pureCategories = [
-    'aces','duals','triples','quads','pentas','hexas',
-    'choice','poker','full_house','s_straight','l_straight','yacht'
-];
-
-// 랜덤 프로필 이모티콘 목록
-const profileEmojis = ['🐱', '🐶', '🦊', '🦁', '🐯', '🐼', '🐻', '🐨', '🐰', '🐹', '🐸', '🐵', '🐣', '🦖', '🦄', '🐝'];
-
-function getRandomEmoji() {
-    return profileEmojis[Math.floor(Math.random() * profileEmojis.length)];
+// 4자리 랜덤 방 코드 생성
+function generateRoomCode() {
+    let code = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
 }
 
-function calculateScore(category, vals) {
-    if (!vals || vals.every(v => v === 0)) return 0;
-    const counts = {};
-    vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
-    const sumAll = vals.reduce((a, b) => a + b, 0);
-
-    switch (category) {
-        case 'aces': return (counts[1] || 0) * 1;
-        case 'duals': return (counts[2] || 0) * 2;
-        case 'triples': return (counts[3] || 0) * 3;
-        case 'quads': return (counts[4] || 0) * 4;
-        case 'pentas': return (counts[5] || 0) * 5;
-        case 'hexas': return (counts[6] || 0) * 6;
-        case 'choice': return sumAll;
-        case 'poker': {
-            for (let val in counts) {
-                if (counts[val] >= 4) return sumAll;
-            }
-            return 0;
-        }
-        case 'full_house': {
-            let hasThree = false;
-            let hasTwo = false;
-            for (let val in counts) {
-                if (counts[val] === 3) hasThree = true;
-                if (counts[val] === 2) hasTwo = true;
-                if (counts[val] === 5) { hasThree = true; hasTwo = true; }
-            }
-            return (hasThree && hasTwo) ? sumAll : 0;
-        }
-        case 's_straight': {
-            const uniqueStr = Array.from(new Set(vals)).sort().join('');
-            if (uniqueStr.includes('1234') || uniqueStr.includes('2345') || uniqueStr.includes('3456')) return 15;
-            return 0;
-        }
-        case 'l_straight': {
-            const uniqueStr = Array.from(new Set(vals)).sort().join('');
-            if (uniqueStr === '12345' || uniqueStr === '23456') return 30;
-            return 0;
-        }
-        case 'yacht': {
-            for (let val in counts) {
-                if (counts[val] === 5) return 50;
-            }
-            return 0;
-        }
-        default: return 0;
+// 셔플 알고리즘
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
     }
-}
-
-function nextTurn(roomCode) {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    const activePlayers = room.players.filter(p => p.active);
-    if (activePlayers.length === 0) {
-        delete rooms[roomCode];
-        return;
-    }
-
-    room.currentTurnIndex = (room.currentTurnIndex + 1) % room.players.length;
-    const nextUser = room.players[room.currentTurnIndex];
-
-    // 탈주한 플레이어인 경우 자동으로 0점 패스 처리하여 남은 플레이어들의 게임 보장
-    if (!nextUser.active) {
-        const unrecordedCategory = pureCategories.find(cat => nextUser.scores[cat] === undefined);
-        
-        if (unrecordedCategory) {
-            nextUser.scores[unrecordedCategory] = 0; // 패스 처리
-        }
-
-        // 탈주자 자동 패스 시에도 순수 족보 12칸 기준으로 종료를 계산해야 함
-        const isFinished = room.players.every(p => {
-            if (!p.active) return true;
-            return pureCategories.every(cat => p.scores[cat] !== undefined);
-        });
-
-        if (isFinished) {
-            room.players.forEach(p => {
-                if (p.scores['bonus'] === undefined) p.scores['bonus'] = 0;
-            });
-            room.stage = 'finished';
-            io.to(roomCode).emit('gameFinished', room);
-        } else {
-            setTimeout(() => { nextTurn(roomCode); }, 500);
-        }
-        return;
-    }
-
-    room.diceValues = [0, 0, 0, 0, 0];
-    room.isHeld = [false, false, false, false, false];
-    room.remainingRolls = 3;
-    room.cupShaken = false;
-
-    io.to(roomCode).emit('gameStateUpdate', room);
+    return array;
 }
 
 io.on('connection', (socket) => {
-    
-    // 1. 방 만들기 (고유 방장 ID 트래킹 구현)
-    socket.on('createRoom', ({ nickname }) => {
-        const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        
+    let currentRoom = null;
+    let myPlayerId = socket.id;
+
+    // 방 만들기
+    socket.on('createRoom', ({ name }) => {
+        const roomCode = generateRoomCode();
         rooms[roomCode] = {
-            code: roomCode,
-            leaderId: socket.id, // [수정] 방장 식별자를 고정적으로 명시
-            players: [{ 
-                id: socket.id, 
-                name: nickname, 
-                emoji: getRandomEmoji(),
-                active: true, 
-                scores: {}, 
-                sequenceRoll: 0 
-            }],
-            currentTurnIndex: 0,
-            diceValues: [0, 0, 0, 0, 0],
-            isHeld: [false, false, false, false, false],
-            remainingRolls: 3,
-            gameStarted: false,
-            stage: 'lobby',
-            cupShaken: false,
-            cards: [] 
+            id: roomCode,
+            players: [{ id: socket.id, name, isHost: true, scoreBoard: {}, orderCard: null, order: 0 }],
+            status: 'lobby',
+            currentTurnIdx: 0,
+            round: 1,
+            gameState: {
+                dice: [1, 2, 3, 4, 5].map(() => ({ value: 1, held: false })), // false: 필드, true: 홈
+                rollCount: 0,
+                status: 'ready' // ready, shaking, rolled
+            }
         };
+        currentRoom = roomCode;
         socket.join(roomCode);
-        socket.emit('roomCreated', { roomCode, nickname });
-        io.to(roomCode).emit('gameStateUpdate', rooms[roomCode]);
+        socket.emit('roomCreated', { roomCode, players: rooms[roomCode].players });
     });
 
-    // 2. 방 참여하기 (동일 닉네임 튕김 유저 재접속 매칭 추가)
-    socket.on('joinRoom', ({ roomCode, nickname }) => {
-        const formattedCode = roomCode.trim().toUpperCase();
-        const room = rooms[formattedCode];
-        
-        if (!room) return socket.emit('errorMsg', '존재하지 않는 방 코드입니다.');
-        
-        // [수정] 이미 시작된 방이라도 끊겼던 유저가 같은 닉네임으로 오면 세션 이어받기 허용
-        if (room.gameStarted) {
-            const inactivePlayer = room.players.find(p => p.name === nickname && !p.active);
-            if (inactivePlayer) {
-                inactivePlayer.id = socket.id;
-                inactivePlayer.active = true;
-                
-                // 만약 방장 세션이 깨져있었다면 방장 권한 복구
-                if (room.leaderId === null || room.players.filter(p => p.active).length === 1) {
-                    room.leaderId = socket.id;
-                }
-
-                socket.join(formattedCode);
-                socket.emit('roomJoined', { roomCode: formattedCode, nickname });
-                io.to(formattedCode).emit('gameStateUpdate', room);
-                return;
-            } else {
-                return socket.emit('errorMsg', '이미 게임이 진행 중입니다.');
-            }
-        }
-        
-        if (room.players.length >= 6) return socket.emit('errorMsg', '방 정원(6명)이 초과되었습니다.');
-
-        let chosenEmoji = getRandomEmoji();
-        const usedEmojis = room.players.map(p => p.emoji);
-        for (let i = 0; i < 10; i++) {
-            if (!usedEmojis.includes(chosenEmoji)) break;
-            chosenEmoji = getRandomEmoji();
-        }
-
-        room.players.push({ 
-            id: socket.id, 
-            name: nickname, 
-            emoji: chosenEmoji,
-            active: true, 
-            scores: {}, 
-            sequenceRoll: 0 
-        });
-        
-        socket.join(formattedCode);
-        socket.emit('roomJoined', { roomCode: formattedCode, nickname });
-        io.to(formattedCode).emit('gameStateUpdate', room);
-    });
-
-    // 3. 게임 시작
-    socket.on('startGame', ({ roomCode }) => {
+    // 방 들어가기
+    socket.on('joinRoom', ({ roomCode, name }) => {
         const room = rooms[roomCode];
-        if (!room) return;
-        
-        // [수정] 배열 0번 인덱스가 아니라 leaderId 일치 여부로 정확하게 방장 검증
-        if (room.leaderId !== socket.id) {
-            return socket.emit('errorMsg', '방장만 게임을 시작할 수 있습니다.');
+        if (!room) {
+            return socket.emit('joinError', '방이 존재하지 않습니다.');
+        }
+        if (room.status !== 'lobby') {
+            return socket.emit('joinError', '이미 게임이 시작된 방입니다.');
+        }
+        if (room.players.length >= 6) {
+            return socket.emit('joinError', '방이 가득 찼습니다. (최대 6인)');
         }
 
-        const pCount = room.players.length;
+        room.players.push({ id: socket.id, name, isHost: false, scoreBoard: {}, orderCard: null, order: 0 });
+        currentRoom = roomCode;
+        socket.join(roomCode);
+        
+        io.to(roomCode).emit('roomUpdated', { players: room.players });
+    });
 
-        if (pCount === 1) {
-            room.gameStarted = true;
-            room.stage = 'play';
-            room.currentTurnIndex = 0;
-            room.diceValues = [0, 0, 0, 0, 0];
-            room.isHeld = [false, false, false, false, false];
-            room.remainingRolls = 3;
-            
-            io.to(roomCode).emit('gameStateUpdate', room);
-            io.to(roomCode).emit('gameStarted', room);
+    // 게임 시작 (방장 권한)
+    socket.on('startGame', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.players[0].id !== socket.id) return;
+
+        if (room.players.length === 1) {
+            // 혼자 하기면 바로 게임 시작
+            room.status = 'playing';
+            room.players[0].order = 1;
+            initTurn(room);
+            io.to(currentRoom).emit('gameStarted', { players: room.players, currentTurnIdx: 0 });
         } else {
-            room.gameStarted = true;
-            room.stage = 'sequence';
-            
-            const cardArray = [];
-            for (let i = 1; i <= pCount; i++) cardArray.push(i);
-            for (let i = cardArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [cardArray[i], cardArray[j]] = [cardArray[j], cardArray[i]];
+            // 멀티플레이면 카드 뽑기로 순서 결정
+            room.status = 'card_selection';
+            // 카드 목록 섞어 준비 (1부터 인원 수 만큼)
+            const cards = [];
+            for (let i = 1; i <= room.players.length; i++) {
+                cards.push(i);
             }
-            
-            room.cards = cardArray.map((val, idx) => ({
-                idx: idx,
-                value: val,
-                chosenBy: null
-            }));
-
-            io.to(roomCode).emit('gameStateUpdate', room);
-            io.to(roomCode).emit('sequenceStageStarted', room);
-            io.to(roomCode).emit('gameStarted', room);
+            room.preparedCards = shuffle(cards);
+            room.cardSelections = {}; // playerId: cardIndex
+            io.to(currentRoom).emit('startCardSelection', { playerCount: room.players.length });
         }
     });
 
-    // 4. 순서 카드 고르기 처리
-    socket.on('chooseCard', ({ roomCode, cardIndex }) => {
-        const room = rooms[roomCode];
-        if (!room || room.stage !== 'sequence') return;
+    // 카드 선택하기
+    socket.on('selectCard', ({ cardIndex }) => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'card_selection') return;
 
-        const player = room.players.find(p => p.id === socket.id);
-        const card = room.cards.find(c => c.idx === cardIndex);
+        // 이미 선택한 주소인지 확인
+        if (Object.values(room.cardSelections).includes(cardIndex)) return;
+        if (room.cardSelections[socket.id] !== undefined) return;
 
-        if (!player || player.sequenceRoll > 0 || !card || card.chosenBy !== null) return;
+        room.cardSelections[socket.id] = cardIndex;
+        const playerName = room.players.find(p => p.id === socket.id).name;
 
-        card.chosenBy = socket.id;
-        player.sequenceRoll = card.value;
+        io.to(currentRoom).emit('cardSelected', { cardIndex, playerName, playerId: socket.id });
 
-        io.to(roomCode).emit('cardChosen', { 
-            playerId: socket.id, 
-            cardIndex: cardIndex, 
-            value: card.value 
-        });
+        // 모든 플레이어가 카드를 선택했는지 확인
+        if (Object.keys(room.cardSelections).length === room.players.length) {
+            // 순서 결정
+            room.players.forEach(p => {
+                const selIdx = room.cardSelections[p.id];
+                p.order = room.preparedCards[selIdx]; // 정해진 순서 부여
+            });
 
-        const allChosen = room.players.every(p => p.sequenceRoll > 0);
-        if (allChosen) {
-            // [주의] 여기서 정렬이 일어나도 leaderId가 따로 있어서 방장 권한 유지됨
-            room.players.sort((a, b) => a.sequenceRoll - b.sequenceRoll);
-            
-            room.stage = 'play';
-            room.currentTurnIndex = 0;
-            room.diceValues = [0, 0, 0, 0, 0];
-            room.isHeld = [false, false, false, false, false];
-            room.remainingRolls = 3;
-
-            io.to(roomCode).emit('gameStateUpdate', room);
+            // 순서 순으로 플레이어 재배열
+            room.players.sort((a, b) => a.order - b.order);
+            room.status = 'playing';
+            room.currentTurnIdx = 0;
+            room.round = 1;
+            initTurn(room);
 
             setTimeout(() => {
-                io.to(roomCode).emit('gameStarted', room);
-            }, 2500);
-        } else {
-            io.to(roomCode).emit('gameStateUpdate', room);
+                io.to(currentRoom).emit('revealCards', { 
+                    players: room.players, 
+                    cardValues: room.preparedCards, 
+                    selections: room.cardSelections 
+                });
+            }, 1000);
         }
     });
 
-    // 5. 주사위 굴리기
-    socket.on('rollDice', ({ roomCode, clientHeld }) => {
-        const room = rooms[roomCode];
-        if (!room || room.stage !== 'play') return;
+    // 턴 초기 설정 함수
+    function initTurn(room) {
+        room.gameState = {
+            dice: [
+                { value: 1, held: false },
+                { value: 2, held: false },
+                { value: 3, held: false },
+                { value: 4, held: false },
+                { value: 5, held: false }
+            ],
+            rollCount: 0,
+            status: 'ready' // 통 안에 들어가 있는 기본 상태
+        };
+    }
 
-        const activePlayer = room.players[room.currentTurnIndex];
-        if (activePlayer.id !== socket.id || room.remainingRolls <= 0) return;
-
-        if (Array.isArray(clientHeld) && clientHeld.length === 5) {
-            room.isHeld = clientHeld.map(v => !!v);
-        }
-
-        for (let i = 0; i < 5; i++) {
-            if (!room.isHeld[i]) {
-                room.diceValues[i] = Math.floor(Math.random() * 6) + 1;
-            }
-        }
-        room.remainingRolls--;
-        room.cupShaken = true;
-
-        io.to(roomCode).emit('diceRolled', {
-            diceValues: room.diceValues,
-            remainingRolls: room.remainingRolls,
-            isHeld: room.isHeld,
-            rollerId: socket.id
-        });
+    // 주사위 컵 흔들기 시작 (모두에게 동기화)
+    socket.on('shakeCup', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'playing') return;
         
-        io.to(roomCode).emit('gameStateUpdate', room);
+        // 현재 차례 플레이어 검증
+        const currentPlayer = room.players[room.currentTurnIdx];
+        if (currentPlayer.id !== socket.id) return;
+        if (room.gameState.rollCount >= 3) return;
+
+        room.gameState.status = 'shaking';
+        io.to(currentRoom).emit('shakingCup', { playerId: socket.id });
     });
 
-    // 6. 점수 입력
-    socket.on('writeScore', ({ roomCode, category }) => {
-        const room = rooms[roomCode];
-        if (!room || room.stage !== 'play') return;
+    // 주사위 던지기 완성
+    socket.on('rollDice', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'playing') return;
 
-        const activePlayer = room.players[room.currentTurnIndex];
-        if (activePlayer.id !== socket.id) return;
-        if (activePlayer.scores[category] !== undefined) return;
-        if (room.diceValues.every(v => v === 0)) return;
+        const currentPlayer = room.players[room.currentTurnIdx];
+        if (currentPlayer.id !== socket.id) return;
+        if (room.gameState.rollCount >= 3) return;
 
-        const score = calculateScore(category, room.diceValues);
-        activePlayer.scores[category] = score;
-
-        const subCategories = ['aces','duals','triples','quads','pentas','hexas'];
-        let subTotal = 0;
-        subCategories.forEach(cat => {
-            if (activePlayer.scores[cat] !== undefined) {
-                subTotal += activePlayer.scores[cat];
+        // 필드에 있는(held: false) 주사위만 완전히 새로운 무작위 값으로 변경
+        room.gameState.dice.forEach((die) => {
+            if (!die.held) {
+                die.value = Math.floor(Math.random() * 6) + 1;
             }
         });
 
-        if (subTotal >= 63 && activePlayer.scores['bonus'] === undefined) {
-            activePlayer.scores['bonus'] = 35;
-        }
+        room.gameState.rollCount += 1;
+        room.gameState.status = 'rolled';
 
-        io.to(roomCode).emit('scoreRegistered', {
-            playerId: socket.id,
-            category,
+        io.to(currentRoom).emit('diceRolled', { 
+            dice: room.gameState.dice, 
+            rollCount: room.gameState.rollCount 
+        });
+    });
+
+    // 주사위 홀드 토글 (필드 <-> 홈 이동)
+    socket.on('toggleDie', ({ index }) => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'playing') return;
+
+        const currentPlayer = room.players[room.currentTurnIdx];
+        if (currentPlayer.id !== socket.id) return;
+        // 주사위를 최소 한 번은 굴려 필드에 나왔을 때만 홀드 가능
+        if (room.gameState.rollCount === 0) return; 
+
+        room.gameState.dice[index].held = !room.gameState.dice[index].held;
+        
+        io.to(currentRoom).emit('dieToggled', { index, dice: room.gameState.dice });
+    });
+
+    // 리롤 그만하고 족보 결정하기 (모든 주사위를 홈으로 흡수 처리)
+    socket.on('stopReRoll', () => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'playing') return;
+
+        const currentPlayer = room.players[room.currentTurnIdx];
+        if (currentPlayer.id !== socket.id) return;
+        if (room.gameState.rollCount === 0) return; // 굴린 적 없으면 불가
+
+        room.gameState.dice.forEach(die => die.held = true); // 전부 홀드 처리
+        room.gameState.rollCount = 3; // 리롤 횟수 소진
+
+        io.to(currentRoom).emit('reRollStopped', { dice: room.gameState.dice });
+    });
+
+    // 점수 기입 요청
+    socket.on('recordScore', ({ category, score }) => {
+        const room = rooms[currentRoom];
+        if (!room || room.status !== 'playing') return;
+
+        const currentPlayer = room.players[room.currentTurnIdx];
+        if (currentPlayer.id !== socket.id) return;
+
+        // 이미 점수가 있는 칸인지 확인
+        if (currentPlayer.scoreBoard[category] !== undefined) return;
+
+        currentPlayer.scoreBoard[category] = score;
+
+        // 보너스 및 점수 계산 트리거 알림 전송 (폭죽 등의 대형 이벤트를 위함)
+        io.to(currentRoom).emit('scoreRecorded', { 
+            playerId: socket.id, 
+            category, 
             score,
-            bonusAwarded: activePlayer.scores['bonus'] === 35
+            scoreBoard: currentPlayer.scoreBoard
         });
 
-        const isFinished = room.players.every(p => {
-            if (!p.active) return true;
-            return pureCategories.every(cat => p.scores[cat] !== undefined);
-        });
-
-        if (isFinished) {
-            room.players.forEach(p => {
-                if (p.scores['bonus'] === undefined) {
-                    p.scores['bonus'] = 0;
-                }
-            });
-            room.stage = 'finished';
-            io.to(roomCode).emit('gameFinished', room);
-        } else {
-            nextTurn(roomCode);
-        }
-    });
-
-    // 7. 게임 재시작
-    socket.on('restartGame', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        // [수정] 정확한 leaderId 매칭으로 재시작 보안 강화
-        if (!room || room.leaderId !== socket.id) return;
-
-        room.players.forEach(p => {
-            p.scores = {};
-            p.sequenceRoll = 0;
-        });
-        room.cards = [];
-        
-        if (room.players.length === 1) {
-            room.stage = 'play';
-            room.gameStarted = true;
-            room.currentTurnIndex = 0;
-            io.to(roomCode).emit('gameStarted', room);
-        } else {
-            room.stage = 'sequence';
+        // 다음 턴 준비
+        setTimeout(() => {
+            room.currentTurnIdx = (room.currentTurnIdx + 1) % room.players.length;
             
-            const pCount = room.players.length;
-            const cardArray = [];
-            for (let i = 1; i <= pCount; i++) cardArray.push(i);
-            for (let i = cardArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [cardArray[i], cardArray[j]] = [cardArray[j], cardArray[i]];
+            // 모든 플레이어가 1라운드를 돌았는지 (턴 한 바퀴 완료 시 라운드 증가)
+            if (room.currentTurnIdx === 0) {
+                room.round += 1;
             }
-            room.cards = cardArray.map((val, idx) => ({
-                idx: idx,
-                value: val,
-                chosenBy: null
-            }));
 
-            io.to(roomCode).emit('sequenceStageStarted', room);
-        }
-        io.to(roomCode).emit('gameStateUpdate', room);
+            // 게임 완료 체크 (12개의 족보가 모두 찼는지 확인)
+            const categoriesCount = 12; // 에이스~헥사 (6) + 초이스~요트 (6)
+            const isFinished = room.players.every(p => Object.keys(p.scoreBoard).length === categoriesCount);
+
+            if (isFinished || room.round > 12) {
+                room.status = 'finished';
+                io.to(currentRoom).emit('gameFinished', { players: room.players });
+            } else {
+                initTurn(room);
+                io.to(currentRoom).emit('nextTurn', { 
+                    currentTurnIdx: room.currentTurnIdx, 
+                    round: room.round,
+                    gameState: room.gameState
+                });
+            }
+        }, 1500);
     });
 
-    // 8. 말풍선 감정표현 이모티콘 중계
-    socket.on('sendEmojiBubble', ({ roomCode, emoji }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-
-        io.to(roomCode).emit('emojiBubbleReceived', {
-            playerId: socket.id,
-            emoji: emoji
-        });
+    // 실시간 이모티콘 소통
+    socket.on('sendEmoji', ({ emoji }) => {
+        if (!currentRoom) return;
+        io.to(currentRoom).emit('emojiReceived', { playerId: socket.id, emoji });
     });
 
-    // 9. 접속 종료 (퇴장 처리 고도화)
+    // 연결 종료 처리
     socket.on('disconnect', () => {
-        for (const roomCode in rooms) {
-            const room = rooms[roomCode];
-            const playerIndex = room.players.findIndex(p => p.id === socket.id);
-
-            if (playerIndex !== -1) {
-                const isLeaderLeaving = room.leaderId === socket.id;
-
-                if (room.stage === 'lobby' || room.stage === 'sequence') {
-                    room.players.splice(playerIndex, 1);
-                } else {
-                    room.players[playerIndex].active = false;
-                }
-
-                const actualConnections = room.players.filter(p => p.active);
-                if (actualConnections.length === 0) {
-                    delete rooms[roomCode];
-                    break;
-                }
-
-                // [수정] 진짜 방장이 나갔다면 실제로 세션이 살아있는 유저 중 한 명을 찾아 양도
-                if (isLeaderLeaving && actualConnections.length > 0) {
-                    room.leaderId = actualConnections[0].id;
-                    io.to(roomCode).emit('leaderDelegated', { leaderId: room.leaderId });
-                }
-
-                if (room.stage === 'sequence') {
-                    room.cards = room.cards.filter(c => c.chosenBy !== socket.id);
-                    
-                    const allRolled = room.players.every(p => p.sequenceRoll > 0);
-                    if (allRolled && room.players.length > 0) {
-                        room.players.sort((a, b) => a.sequenceRoll - b.sequenceRoll);
-                        room.stage = 'play';
-                        room.currentTurnIndex = 0;
-                        room.diceValues = [0, 0, 0, 0, 0];
-                        room.isHeld = [false, false, false, false, false];
-                        room.remainingRolls = 3;
-                        io.to(roomCode).emit('gameStarted', room);
-                    } else {
-                        io.to(roomCode).emit('gameStateUpdate', room);
-                    }
-                } else if (room.stage === 'play' && room.currentTurnIndex === playerIndex) {
-                    nextTurn(roomCode);
-                } else {
-                    io.to(roomCode).emit('gameStateUpdate', room);
+        if (currentRoom && rooms[currentRoom]) {
+            const room = rooms[currentRoom];
+            room.players = room.players.filter(p => p.id !== socket.id);
+            
+            if (room.players.length === 0) {
+                delete rooms[currentRoom];
+            } else {
+                io.to(currentRoom).emit('roomUpdated', { players: room.players });
+                // 만약 현재 턴인 사람이 나갔다면 다음 사람으로 이전
+                if (room.status === 'playing') {
+                    room.currentTurnIdx = room.currentTurnIdx % room.players.length;
+                    io.to(currentRoom).emit('nextTurn', { 
+                        currentTurnIdx: room.currentTurnIdx, 
+                        round: room.round,
+                        gameState: room.gameState
+                    });
                 }
             }
         }
@@ -476,4 +312,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+http.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
