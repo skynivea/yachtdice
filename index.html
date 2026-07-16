@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>럭셔리 요트 다이스 (Yacht Dice)</title>
+    <title>요트 다이스 (Yacht Dice)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -45,7 +45,7 @@
 
         /* 클릭해서 홀드 보관할 때는 회전 없이 부드러운 스케일 팝 */
         @keyframes dice-static-pop {
-            0% { transform: scale(0.8); opacity: 0; }
+            0% { transform: scale(0.85); opacity: 0.5; }
             100% { transform: scale(1); opacity: 1; }
         }
         .animate-dice-static {
@@ -153,26 +153,26 @@
                 <button onclick="closeMobileCup()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
 
                 <div class="text-center">
-                    <h2 class="text-lg font-bold text-slate-200">주사위</h2>
+                    <!-- 주사위 -> 주사위 굴리기로 이름 변경 -->
+                    <h2 class="text-lg font-bold text-slate-200">주사위 굴리기</h2>
                     <p class="text-[11px] text-slate-400 mt-1">마우스나 손가락으로 마구 끌어서 흔들어보세요!</p>
                 </div>
 
                 <div class="relative flex flex-col items-center justify-center my-auto w-full h-56" id="cup-drag-zone">
                     <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-75 relative z-10 select-none">
-                        <!-- MATTE CUP 문구 삭제 -->
                         <div class="flex gap-1 justify-center mt-2 pointer-events-none" id="cup-inside-indicators"></div>
                     </div>
                 </div>
 
-                <!-- 이모티콘 바: 모서리가 둥근 직사각형 밖으로 안 튀어 나가게 길이를 340px로 늘림 -->
-                <div class="w-full max-w-[340px] mx-auto bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+                <!-- 이모티콘 바: 모서리가 둥근 테두리 선(border) 제거 -->
+                <div class="w-full max-w-[340px] mx-auto bg-slate-900/60 p-3 rounded-xl">
                     <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
                     <div class="flex justify-center gap-3 w-full">
                         <button onclick="triggerEmoji('😭')" class="hover:scale-125 transition-transform text-xl p-0.5">😭</button>
                         <button onclick="triggerEmoji('😒')" class="hover:scale-125 transition-transform text-xl p-0.5">😒</button>
                         <button onclick="triggerEmoji('🥰')" class="hover:scale-125 transition-transform text-xl p-0.5">🥰</button>
                         <button onclick="triggerEmoji('🤣')" class="hover:scale-125 transition-transform text-xl p-0.5">🤣</button>
-                        <button onclick="triggerEmoji('💢')" class="hover:scale-125 transition-transform text-xl p-0.5">💢</button>
+                        <button onclick="triggerEmoji('💡')" class="hover:scale-125 transition-transform text-xl p-0.5">💡</button>
                         <button onclick="triggerEmoji('🙅‍♀️')" class="hover:scale-125 transition-transform text-xl p-0.5">🙅‍♀️</button>
                         <button onclick="triggerEmoji('🍀')" class="hover:scale-125 transition-transform text-xl p-0.5">🍀</button>
                     </div>
@@ -254,7 +254,7 @@
             currentRound: 1,      
             rollsLeft: 3,
             isRolling: false,     
-            justRolled: false, // 롤링 결과물인지 단순 홀드 이동인지 판별 플래그 (중요)
+            justRolled: false, 
             dice: [
                 { value: 1, held: false },
                 { value: 1, held: false },
@@ -264,6 +264,9 @@
             ],
             selectedCatToConfirm: null
         };
+
+        // 전역 메모리에 박아두는 고유 주사위 엘리먼트 캐시 (깜빡임 방지용 핵심 로직)
+        const cachedDiceElements = [];
 
         const CATEGORIES = [
             { id: 'aces', name: '에이스', desc: '1의 눈 합' },
@@ -293,14 +296,12 @@
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 
-                // 나무와 플라스틱 주사위 특유의 비진동 복합 주파수 생성
                 osc.type = Math.random() > 0.4 ? 'triangle' : 'sawtooth';
                 osc.frequency.setValueAtTime(120 + Math.random() * 230, audioCtx.currentTime);
                 
                 gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
                 
-                // 원통 속 울림 필터 연동
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'bandpass';
                 filter.frequency.value = 700;
@@ -317,6 +318,48 @@
             }
         }
 
+        // --- 점수 기입 시 터지는 순수 자바스크립트 폭죽 파티클 물리 엔진 ---
+        function triggerScoreFireworks(element) {
+            if (!element) return;
+            const rect = element.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // 20개의 다채롭고 찬란한 에메랄드 입자 발사
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = "fixed pointer-events-none z-50 rounded-full";
+                
+                // 에메랄드 계열 랜덤 배합
+                const colorPool = ['#34d399', '#10b981', '#059669', '#a7f3d0', '#6ee7b7'];
+                particle.style.backgroundColor = colorPool[Math.floor(Math.random() * colorPool.length)];
+                
+                const size = Math.random() * 6 + 4;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${centerX}px`;
+                particle.style.top = `${centerY}px`;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 80 + 40;
+                const destX = Math.cos(angle) * velocity;
+                const destY = Math.sin(angle) * velocity;
+
+                document.body.appendChild(particle);
+
+                particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 700 + Math.random() * 400,
+                    easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)',
+                    fill: 'forwards'
+                });
+
+                setTimeout(() => particle.remove(), 1100);
+            }
+        }
+
         // --- 모바일 전용 뷰 및 오버레이 모달 스위칭 엔진 ---
         function openMobileCup() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
@@ -324,7 +367,6 @@
             if (GAME.rollsLeft <= 0) return alert("남은 리롤 횟수가 없습니다! 점수를 기록하세요.");
             if (GAME.isRolling) return;
 
-            // 모바일일 때만 오버레이 활성화
             if (window.innerWidth < 1024) {
                 const cupSec = document.getElementById('cup-section');
                 cupSec.classList.remove('hidden');
@@ -473,7 +515,6 @@
         socket.on('diceRolled', ({ dice, rollCount }) => {
             document.getElementById('dice-cup').classList.remove('cup-shaking');
             
-            // 롤링 상태 활성화 -> 3D 회전 애니메이션 발동시킴
             GAME.justRolled = true; 
             GAME.dice = dice;
             GAME.rollsLeft = 3 - rollCount;
@@ -484,7 +525,6 @@
 
             syncDiceStatus();
             calculateAllPotentialScores();
-            triggerDopamineEffects();
 
             // 리롤 3번 다 썼을 때 모바일에서 스코어판을 즉시 자동으로 열어줌
             if (GAME.rollsLeft === 0) {
@@ -520,10 +560,19 @@
             }, 300);
         });
 
-        socket.on('scoreRecorded', ({ playerId, scoreBoard }) => {
+        socket.on('scoreRecorded', ({ playerId, category, score, scoreBoard }) => {
             const p = GAME.players.find(pl => pl.id === playerId);
             if (p) p.scoreBoard = scoreBoard;
+            
+            // 점수판 재생성
             renderScoreboard();
+            
+            // 방금 기록한 타겟 셀에 폭죽 연출 실행
+            const targetCell = document.getElementById(`td-score-${category}`);
+            if (targetCell) {
+                triggerScoreFireworks(targetCell);
+            }
+
             closeMobileScoreboard(); // 기입 완료 시 모바일 모달 닫기
         });
 
@@ -538,7 +587,6 @@
             document.getElementById('early-stop-btn').disabled = true;
             GAME.isRolling = false;
 
-            // 모바일 닫기 안전장치
             closeMobileCup();
             closeMobileScoreboard();
 
@@ -651,7 +699,8 @@
             socket.emit('sendEmoji', { emoji });
         }
 
-        function generateDiceHTML(value, colorClass = "bg-white", extraClasses = "") {
+        // 특정 주사위의 SVG 내용물만 신속 생성하는 도우미
+        function getDiceSVGContent(value) {
             const dotsLayout = {
                 1: [[50, 50]],
                 2: [[25, 25], [75, 75]],
@@ -667,13 +716,7 @@
                 const r = (value === 1) ? 11 : 8;
                 dotsSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
             });
-            return `
-                <div class="w-full aspect-square ${colorClass} ${extraClasses} rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-all duration-75">
-                    <svg viewBox="0 0 100 100" class="w-full h-full p-2.5">
-                        ${dotsSvg}
-                    </svg>
-                </div>
-            `;
+            return `<svg viewBox="0 0 100 100" class="w-full h-full p-2.5">${dotsSvg}</svg>`;
         }
 
         function updateCupInsideIndicators() {
@@ -689,58 +732,74 @@
             }
         }
 
-        // --- 주사위 동기화 & 모바일 전용 수동 버튼 연계 엔진 ---
+        // --- 주사위 동기화 (DOM 재생성 없는 싱글톤 이동 로직) ---
         function syncDiceStatus() {
             const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
             const emptyMsg = document.getElementById('field-empty-msg');
 
-            homeContainer.innerHTML = '';
-            fieldWrapper.innerHTML = '';
-
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
             const shouldHideField = (GAME.rollsLeft === 3 || GAME.isRolling);
+
+            // 주사위 홈과 필드의 가이드 빈 상자 자리를 그리기 위해 완전히 한 번 비웁니다.
+            homeContainer.innerHTML = '';
+            fieldWrapper.innerHTML = '';
 
             let heldCount = 0;
             let fieldCount = 0;
 
-            // 회전 여부 구분 애니메이션 클래스 할당
-            const rollClass = GAME.justRolled ? "animate-dice-roll" : "animate-dice-static";
-
             GAME.dice.forEach((die, idx) => {
+                // 전역 캐시에 박힌 고유 DIV 인스턴스 획득
+                let el = cachedDiceElements[idx];
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = `persistent-die-${idx}`;
+                    cachedDiceElements[idx] = el;
+                }
+
+                // 렌더링 최적화: 눈 값이 진짜 바뀌었을 때만 SVG 내용물을 바꿉니다 (화면 깜빡임 완벽 차단)
+                const storedVal = el.getAttribute('data-value');
+                if (storedVal !== String(die.value) || !el.innerHTML) {
+                    el.innerHTML = getDiceSVGContent(die.value);
+                    el.setAttribute('data-value', die.value);
+                }
+
+                // 공통 뼈대 테일윈드 클래스 초기화
+                el.className = "w-full aspect-square rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-all duration-75";
+
+                // 이벤트 핸들러 제거 후 신규 주입 (메모리 누수 차단)
+                el.onclick = null;
+                if (isMyTurn && !GAME.isRolling && (die.held || (GAME.rollsLeft > 0 && GAME.rollsLeft < 3))) {
+                    el.onclick = () => {
+                        GAME.justRolled = false; // 클릭 이동은 절대 회전 연출을 적용하지 않습니다.
+                        socket.emit('toggleDie', { index: idx });
+                    };
+                }
+
+                // 3D 회전 혹은 통통 튀는 스케일 전환용 클래스 배분
                 if (die.held) {
                     heldCount++;
-                    const dieDiv = document.createElement('div');
-                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-zinc-100 border-zinc-300", "animate-dice-static");
-                    const element = dieDiv.firstElementChild;
-                    if (isMyTurn && !GAME.isRolling) {
-                        element.addEventListener('click', () => {
-                            GAME.justRolled = false; // 토글 시 회전 무력화
-                            socket.emit('toggleDie', { index: idx });
-                        });
-                    }
-                    homeContainer.appendChild(element);
+                    el.classList.add("bg-zinc-100", "border-zinc-300", "animate-dice-static");
+                    // 기존 DOM을 파괴하지 않고 물리적으로 appendChild하여 이동시킵니다.
+                    homeContainer.appendChild(el);
                 } else {
                     if (!shouldHideField) {
                         fieldCount++;
-                        const dieDiv = document.createElement('div');
-                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-zinc-50 border-zinc-200 " + rollClass, "field-dice-active");
-                        const element = dieDiv.firstElementChild;
-                        if (isMyTurn) {
-                            element.addEventListener('click', () => {
-                                GAME.justRolled = false; // 토글 시 회전 무력화
-                                socket.emit('toggleDie', { index: idx });
-                            });
+                        el.classList.add("bg-white", "hover:bg-zinc-50", "border-zinc-200");
+                        if (GAME.justRolled) {
+                            el.classList.add("animate-dice-roll", "field-dice-active");
+                        } else {
+                            el.classList.add("animate-dice-static", "field-dice-active");
                         }
-                        fieldWrapper.appendChild(element);
+                        fieldWrapper.appendChild(el);
                     }
                 }
             });
 
-            // 렌더링 이후 롤링 애니메이션 플래그 초기화 (다음 클릭 시 안 돌도록 제어)
+            // 매 프레임마다 회전 전용 플래그 수동 오프
             GAME.justRolled = false;
 
-            // 가이드 빈 박스 생성
+            // 빈 대기 공간 격자 가이드박스 보존
             for (let i = heldCount; i < 5; i++) {
                 const emptySlot = document.createElement('div');
                 emptySlot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square bg-black/40";
@@ -760,7 +819,7 @@
                 emptyMsg.textContent = GAME.isRolling ? "컵 내부에서 격렬히 섞이는 중..." : "주사위가 컵 안에 있습니다. 흔들어서 굴리세요!";
             }
             updateCupInsideIndicators();
-            syncMobileControlButtons(); // 모바일 전용 삼총사 제어기 연동
+            syncMobileControlButtons(); 
         }
 
         function syncMobileControlButtons() {
@@ -815,13 +874,12 @@
             lastPointerX = pointer.clientX;
             lastPointerY = pointer.clientY;
 
-            cup.style.transition = 'none'; // 드래그 도중에는 부드러운 복귀 트랜지션 해제
+            cup.style.transition = 'none'; 
         }
 
         function moveDrag(e) {
             if (!isDragging) return;
             
-            // 모바일 드래그 시 브라우저 스크롤 바운싱 현상 전면 가로막기
             if (e.cancelable) {
                 e.preventDefault();
             }
@@ -830,7 +888,6 @@
             let dx = pointer.clientX - dragStartX;
             let dy = pointer.clientY - dragStartY;
 
-            // 컵이 작동부 밖으로 영원히 도망가지 않도록 원반 반경 130px 한계 제한
             const limitRadius = 130;
             const currentDist = Math.sqrt(dx * dx + dy * dy);
             if (currentDist > limitRadius) {
@@ -841,15 +898,13 @@
 
             cup.style.transform = `translate(${dx}px, ${dy}px)`;
 
-            // 드래그 누적 연산 및 달그락 효과음 유도 연산
             const step = Math.sqrt(Math.pow(pointer.clientX - lastPointerX, 2) + Math.pow(pointer.clientY - lastPointerY, 2));
             if (step > 12) {
                 accumulatedDistance += step;
-                playClatterSound(); // 드래그 속도와 주기에 정비례하여 자가 발전 사운드 격발
+                playClatterSound(); 
                 lastPointerX = pointer.clientX;
                 lastPointerY = pointer.clientY;
 
-                // 충분히 마구 흔들었다면 컵 고주파 요동 애니메이션 활성화 및 서버 신호 전송
                 if (accumulatedDistance > 380 && !shakeTriggered) {
                     shakeTriggered = true;
                     cup.classList.add('cup-shaking');
@@ -862,7 +917,6 @@
             if (!isDragging) return;
             isDragging = false;
 
-            // 드래그 종료 시 원래 위치(0,0)로 통통 튀며 복귀하는 탄성 스프링 애니메이션 부여
             cup.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
             cup.style.transform = 'translate(0px, 0px)';
 
@@ -870,7 +924,6 @@
                 cup.classList.remove('cup-shaking');
                 socket.emit('rollDice');
                 
-                // 모바일 환경이었다면 롤 완료 시 컵 드래그 모달 자동으로 매끄럽게 닫아주기
                 setTimeout(() => {
                     closeMobileCup();
                 }, 300);
@@ -879,16 +932,13 @@
             }
         }
 
-        // 데스크톱 마우스 바인딩
         cup.addEventListener('mousedown', startDrag);
         window.addEventListener('mousemove', moveDrag);
         window.addEventListener('mouseup', endDrag);
 
-        // 모바일 손가락 터치 바인딩 (수동 패시브 가로막기)
         cup.addEventListener('touchstart', startDrag, { passive: false });
         window.addEventListener('touchmove', moveDrag, { passive: false });
         window.addEventListener('touchend', endDrag);
-
 
         function triggerEarlyStop() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
@@ -896,7 +946,6 @@
             socket.emit('stopReRoll');
         }
 
-        // 스코어보드 수치 연산기
         function getComputedScore(catId, values) {
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
@@ -944,6 +993,7 @@
                 const tr = document.createElement('tr');
                 tr.className = `border-b border-slate-700/50 transition-all ${hasScore ? 'bg-slate-900/40 opacity-70' : 'hover:bg-slate-700/30 cursor-pointer'}`;
                 
+                // 점수 확정 시 원래보다 훨씬 두껍고 선명한 에메랄드색 폰트(text-emerald-400 font-extrabold)로 출력
                 tr.innerHTML = `
                     <td class="py-2.5 px-3 font-semibold text-slate-200">
                         ${cat.name}
@@ -951,7 +1001,7 @@
                     </td>
                     <td class="py-2.5 px-3 text-center text-slate-500">-</td>
                     <td class="py-2.5 px-3 text-right font-black text-xs" id="td-score-${cat.id}">
-                        ${hasScore ? `<span class="text-slate-300 text-sm">${writtenScore}</span>` : `<span class="text-slate-600">-</span>`}
+                        ${hasScore ? `<span class="text-emerald-400 font-extrabold text-sm">${writtenScore}</span>` : `<span class="text-slate-600">-</span>`}
                     </td>
                 `;
 
@@ -1029,45 +1079,6 @@
             let total = subtotal >= 63 ? 35 : 0;
             Object.keys(player.scoreBoard).forEach(k => total += (player.scoreBoard[k] || 0));
             document.getElementById('current-total-score').textContent = total;
-        }
-
-        function triggerDopamineEffects() {
-            const values = GAME.dice.map(d => d.value);
-            const counts = Array(7).fill(0);
-            values.forEach(v => counts[v]++);
-
-            if (counts.includes(5)) {
-                spawnDopamineBanner("🎉 🎉 YACHT 요트 달성!! (+50점) 🎉 🎉", "from-amber-500 to-yellow-400 border-yellow-300");
-                return;
-            }
-
-            if (counts[4] >= 4 || counts[5] >= 4 || counts[6] >= 4) {
-                spawnDopamineBanner("🔥 보너스 대폭 격발 조건 만족!! 고득점 기회 🔥", "from-emerald-600 to-teal-500 border-emerald-400");
-                return;
-            }
-
-            if (counts.includes(3) && counts.includes(2)) {
-                const sum = values.reduce((a, b) => a + b, 0);
-                if (sum >= 27) {
-                    spawnDopamineBanner("💣 묵직한 초고득점 풀 하우스 폭발! 💣", "from-purple-600 to-indigo-600 border-purple-400");
-                }
-            }
-        }
-
-        function spawnDopamineBanner(msg, bgGradients) {
-            const banner = document.createElement('div');
-            banner.className = `fixed inset-0 flex flex-col items-center justify-center bg-black/70 pointer-events-none z-50 transition-opacity duration-500`;
-            banner.innerHTML = `
-                <div class="bg-gradient-to-r ${bgGradients} border-2 p-8 rounded-2xl shadow-2xl text-center scale-95 animate-bounce max-w-lg">
-                    <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-wide drop-shadow-md">${msg}</h2>
-                </div>
-            `;
-            document.body.appendChild(banner);
-
-            setTimeout(() => {
-                banner.style.opacity = '0';
-                setTimeout(() => banner.remove(), 500);
-            }, 2500);
         }
 
         function toggleGlobalScoreboard() {
