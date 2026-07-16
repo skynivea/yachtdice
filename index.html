@@ -31,7 +31,7 @@
             100% { transform: translate(2px, -2px) rotate(0deg); }
         }
         .cup-shaking {
-            animation: cup-shake 0.08s infinite;
+            animation: cup-shake 0.08s infinite !important;
         }
 
         /* 주사위가 필드로 튀어나올 때의 스케일 애니메이션 */
@@ -45,7 +45,7 @@
 
         /* 홈으로 흡수되는 애니메이션 효과 */
         .animate-suck-in {
-            transition: all 0.5s ease-in-out;
+            transition: all 0.4s ease-in-out;
             transform: translateY(-150px) scale(0.3);
             opacity: 0;
         }
@@ -85,14 +85,14 @@
             </div>
         </section>
 
-        <!-- 순서 카드 뽑기 UI (무광 블랙 디자인 강화) -->
+        <!-- 순서 카드 뽑기 UI -->
         <section id="card-selection-screen" class="hidden w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl text-center">
             <h2 class="text-2xl font-black text-slate-200 mb-2">🎲 순서 정하기</h2>
             <p class="text-slate-400 text-sm mb-8">카드를 골라 뒤집어 순서를 정하세요.</p>
             <div id="card-container" class="grid grid-cols-2 md:grid-cols-6 gap-4 justify-center mb-8"></div>
         </section>
 
-        <!-- 인게임 화면 (게임판 -> 컵 -> 스코어보드 레이아웃 명확화) -->
+        <!-- 인게임 화면 -->
         <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center">
             
             <!-- (좌측): 완벽한 정사각형 5칸 레이아웃의 게임판 -->
@@ -103,14 +103,15 @@
                     <div id="hold-home" class="grid grid-cols-5 gap-3 bg-black border-2 border-slate-900 p-3 rounded-xl"></div>
                 </div>
 
-                <!-- 게임 필드: 빨간색 정사각형 영역 -->
-                <div class="my-6">
+                <!-- 게임 필드: 완벽한 빨간색 정사각형 영역 -->
+                <div class="my-6 flex flex-col items-center">
                     <h3 class="text-xs font-bold text-red-300 mb-3 uppercase tracking-wider text-center">게임 필드</h3>
-                    <div id="roll-field" class="bg-red-950/90 border-2 border-red-800 rounded-xl p-3 min-h-[120px] flex items-center justify-center relative overflow-hidden">
+                    <div id="roll-field" class="w-full aspect-square max-w-[340px] mx-auto bg-red-950/90 border-2 border-red-800 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
                         <div id="field-empty-msg" class="text-red-300 text-xs font-semibold text-center pointer-events-none absolute z-10 px-4">
                             주사위가 컵 안에 있습니다. 컵을 흔들어 섞으세요!
                         </div>
-                        <div id="field-dice-wrapper" class="grid grid-cols-5 gap-3 w-full relative z-20"></div>
+                        <!-- 내부 주사위는 3x3 그리드로 배치하여 정사각형 비율 보존 -->
+                        <div id="field-dice-wrapper" class="grid grid-cols-3 gap-4 w-full relative z-20"></div>
                     </div>
                 </div>
 
@@ -120,15 +121,15 @@
                 </div>
             </div>
 
-            <!-- (중앙): 원통 컵 작동부 (물리 드래그 감지 포함) -->
+            <!-- (중앙): 원통 컵 작동부 -->
             <div class="w-full lg:w-72 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between items-center shadow-xl relative min-h-[380px]">
                 <div class="text-center">
                     <h2 class="text-md font-bold text-slate-300">주사위 컵 (Cup)</h2>
-                    <p class="text-[11px] text-slate-400 mt-1">마우스로 컵을 잡고 마구 흔든 뒤 놓으세요!</p>
+                    <p class="text-[11px] text-slate-400 mt-1">컵을 클릭하거나 드래그하여 마구 흔드세요!</p>
                 </div>
 
                 <div class="relative flex flex-col items-center justify-center my-auto w-full h-48" id="cup-drag-zone">
-                    <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75 relative z-10 select-none">
+                    <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-75 relative z-10 select-none">
                         <span class="text-xs text-zinc-500 font-black tracking-widest uppercase pointer-events-none">MATTE CUP</span>
                         <div class="flex gap-1 justify-center mt-2 pointer-events-none" id="cup-inside-indicators"></div>
                     </div>
@@ -149,10 +150,11 @@
                 </div>
             </div>
 
-            <!-- (우측): 스코어보드 영역 (한글 명칭 완벽 한글화) -->
+            <!-- (우측): 스코어보드 영역 -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl min-w-[340px] flex flex-col justify-between">
                 <div>
-                    <div class="flex items-center gap-4 overflow-x-auto pb-5 border-b border-slate-700 mb-4 h-24" id="player-profiles-row"></div>
+                    <!-- 프로필 이모티콘 팝업 공간 확보를 위한 pt-10 설정 및 오버플로우 잘림 제거 -->
+                    <div class="flex items-center gap-4 pb-5 border-b border-slate-700 mb-4 relative pt-10" id="player-profiles-row"></div>
                     
                     <div class="flex justify-between items-center mb-3">
                         <h2 class="text-sm font-bold text-slate-300">점수판 (요트 족보)</h2>
@@ -227,7 +229,6 @@
             selectedCatToConfirm: null
         };
 
-        // 완벽한 한글 조건 명시
         const CATEGORIES = [
             { id: 'aces', name: '에이스', desc: '1의 눈 합' },
             { id: 'deuces', name: '듀얼', desc: '2의 눈 합' },
@@ -271,6 +272,15 @@
 
         // --- 소켓 통신 바인딩 ---
         socket.on('roomCreated', ({ roomCode, players }) => {
+            handleRoomEntry(roomCode, players);
+        });
+
+        // 버그 1 해결: 참가자가 방 입장에 성공했을 때 정상적으로 화면을 전환하도록 이벤트를 전용 설계
+        socket.on('roomJoined', ({ roomCode, players }) => {
+            handleRoomEntry(roomCode, players);
+        });
+
+        function handleRoomEntry(roomCode, players) {
             GAME.roomCode = roomCode;
             document.getElementById('display-room-code').textContent = roomCode;
             document.getElementById('room-info-display').classList.remove('hidden');
@@ -278,7 +288,7 @@
             document.getElementById('join-input-area').classList.add('hidden');
             document.getElementById('room-setup').classList.remove('hidden');
             updateLobbyUI(players);
-        });
+        }
 
         socket.on('roomUpdated', ({ players }) => {
             updateLobbyUI(players);
@@ -370,7 +380,6 @@
         });
 
         socket.on('reRollStopped', ({ dice }) => {
-            // 조기종료 시 필드의 주사위들이 위로 빨려 들어가는 임시 애니메이션 클래스 부여
             document.querySelectorAll(".field-dice-active").forEach(el => {
                 el.classList.add("animate-suck-in");
             });
@@ -497,8 +506,9 @@
                 avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[75px] relative transition-all duration-300
                     ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md shadow-emerald-950 opacity-100' : 'bg-slate-900 border-slate-800 opacity-50'}`;
                 
+                // 버그 4 해결: 이모티콘이 상단에서 잘리지 않도록 -top-8로 고정 및 트랜지션 보완
                 avatarEl.innerHTML = `
-                    <div id="emoji-bubble-${p.id}" class="absolute -top-12 bg-white border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50 transform translate-y-0"></div>
+                    <div id="emoji-bubble-${p.id}" class="absolute -top-8 bg-white border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50 transform translate-y-0"></div>
                     <img src="${avatar}" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-slate-700" />
                     <span class="text-[10px] font-bold mt-1.5 text-slate-300 truncate max-w-[65px]">${p.name}</span>
                 `;
@@ -510,8 +520,7 @@
             socket.emit('sendEmoji', { emoji });
         }
 
-        // 숫자 대신 명확한 정밀 주사위 눈(Pip Layout) 생성 SVG 구조
-        function generateDiceHTML(value, colorClass = "bg-white") {
+        function generateDiceHTML(value, colorClass = "bg-white", extraClasses = "") {
             const dotsLayout = {
                 1: [[50, 50]],
                 2: [[25, 25], [75, 75]],
@@ -528,7 +537,7 @@
                 dotsSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
             });
             return `
-                <div class="w-full aspect-square ${colorClass} rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-transform duration-75">
+                <div class="w-full aspect-square ${colorClass} ${extraClasses} rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-all duration-75">
                     <svg viewBox="0 0 100 100" class="w-full h-full p-2.5">
                         ${dotsSvg}
                     </svg>
@@ -549,7 +558,7 @@
             }
         }
 
-        // 주사위 분리 및 정사각형 그리드 강제 동기화
+        // 버그 3 해결: 유동 배열 생성 로직을 완전히 비우고 다시 채워 렌더링 꼬임 현상 원천 차단
         function syncDiceStatus() {
             const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
@@ -558,55 +567,50 @@
             homeContainer.innerHTML = '';
             fieldWrapper.innerHTML = '';
 
-            for (let i = 0; i < 5; i++) {
-                const hSlot = document.createElement('div');
-                hSlot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square flex items-center justify-center bg-black/40";
-                homeContainer.appendChild(hSlot);
-
-                const fSlot = document.createElement('div');
-                fSlot.className = "border-2 border-dashed border-red-900/40 rounded-xl aspect-square flex items-center justify-center bg-red-950/20";
-                fieldWrapper.appendChild(fSlot);
-            }
-
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            // 컵 리롤 3회 최초 기점 또는 컵을 마구 흔드는 와중에는 필드 주사위 완벽 은닉
             const shouldHideField = (GAME.rollsLeft === 3 || GAME.isRolling);
 
-            let homeIdx = 0, fieldIdx = 0;
-            let hasFieldDice = false;
+            let heldCount = 0;
+            let fieldCount = 0;
 
             GAME.dice.forEach((die, idx) => {
                 if (die.held) {
-                    const slots = homeContainer.children;
-                    if (slots[homeIdx]) {
-                        const dieDiv = document.createElement('div');
-                        dieDiv.className = "w-full h-full";
-                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-zinc-100 border-zinc-300");
-                        if (isMyTurn && !GAME.isRolling) {
-                            dieDiv.firstChild.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
-                        }
-                        slots[homeIdx].replaceWith(dieDiv.firstChild);
-                        homeIdx++;
+                    heldCount++;
+                    const dieDiv = document.createElement('div');
+                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-zinc-100 border-zinc-300");
+                    const element = dieDiv.firstElementChild;
+                    if (isMyTurn && !GAME.isRolling) {
+                        element.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
                     }
+                    homeContainer.appendChild(element);
                 } else {
                     if (!shouldHideField) {
-                        hasFieldDice = true;
-                        const slots = fieldWrapper.children;
-                        if (slots[fieldIdx]) {
-                            const dieDiv = document.createElement('div');
-                            dieDiv.className = "w-full h-full field-dice-active";
-                            dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-zinc-50 border-zinc-200 animate-dice-pop");
-                            if (isMyTurn) {
-                                dieDiv.firstChild.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
-                            }
-                            slots[fieldIdx].replaceWith(dieDiv.firstChild);
-                            fieldIdx++;
+                        fieldCount++;
+                        const dieDiv = document.createElement('div');
+                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-zinc-50 border-zinc-200 animate-dice-pop", "field-dice-active");
+                        const element = dieDiv.firstElementChild;
+                        if (isMyTurn) {
+                            element.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
                         }
+                        fieldWrapper.appendChild(element);
                     }
                 }
             });
 
-            if (hasFieldDice) {
+            // 빈 슬롯 수에 맞춰 가이드 점선 박스 채워 정렬 모양새 일치
+            for (let i = heldCount; i < 5; i++) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square bg-black/40";
+                homeContainer.appendChild(emptySlot);
+            }
+
+            for (let i = fieldCount; i < 5; i++) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = "border-2 border-dashed border-red-900/40 rounded-xl aspect-square bg-red-950/20";
+                fieldWrapper.appendChild(emptySlot);
+            }
+
+            if (fieldCount > 0) {
                 emptyMsg.classList.add('hidden');
             } else {
                 emptyMsg.classList.remove('hidden');
@@ -615,65 +619,40 @@
             updateCupInsideIndicators();
         }
 
-        // --- 물리 드래그 흔들기 인터랙션 엔진 구현 ---
+        // --- 버그 3 해결: 클릭 및 드래그 흔들기 연출 통합 및 즉시 격발 엔진 ---
+        let isShaking = false;
         let dragActive = false;
-        let shakeAccumulator = 0;
-        let lastPosX = 0, lastPosY = 0;
-        const cupZone = document.getElementById('cup-drag-zone');
 
-        cupZone.addEventListener('mousedown', startCupDrag);
-        window.addEventListener('mousemove', processCupDrag);
-        window.addEventListener('mouseup', stopCupDrag);
-
-        cupZone.addEventListener('touchstart', (e) => startCupDrag(e.touches[0]), { passive: true });
-        window.addEventListener('touchmove', (e) => processCupDrag(e.touches[0]), { passive: false });
-        window.addEventListener('touchend', stopCupDrag);
-
-        function startCupDrag(e) {
+        function triggerCupRoll() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn || GAME.rollsLeft <= 0) return;
+            if (!isMyTurn || GAME.rollsLeft <= 0 || isShaking) return;
 
-            dragActive = true;
-            shakeAccumulator = 0;
-            lastPosX = e.clientX;
-            lastPosY = e.clientY;
-            
-            // 컵 안으로 빨려 들어가도록 유도
+            isShaking = true;
             GAME.isRolling = true;
             syncDiceStatus();
             socket.emit('shakeCup');
-        }
 
-        function processCupDrag(e) {
-            if (!dragActive) return;
-            
-            const deltaX = Math.abs(e.clientX - lastPosX);
-            const deltaY = Math.abs(e.clientY - lastPosY);
-            shakeAccumulator += (deltaX + deltaY);
+            const cup = document.getElementById('dice-cup');
+            cup.classList.add('cup-shaking');
 
-            lastPosX = e.clientX;
-            lastPosY = e.clientY;
-
-            // 흔들림 물리값 임계 도달 시 시각 효과 극대화
-            if (shakeAccumulator > 30) {
-                document.getElementById('dice-cup').classList.add('cup-shaking');
-            }
-        }
-
-        function stopCupDrag() {
-            if (!dragActive) return;
-            dragActive = false;
-            document.getElementById('dice-cup').classList.remove('cup-shaking');
-
-            // 일정 임계치 이상 충분히 흔들었을 때만 리롤 트리거 인정
-            if (shakeAccumulator > 80) {
+            // 800ms 동안 시각적으로 요동치게 컵을 흔든 후 최종 쏟아져 나오게 처리
+            setTimeout(() => {
+                cup.classList.remove('cup-shaking');
                 socket.emit('rollDice');
-            } else {
-                // 덜 흔들고 놓았을 경우 초기화
-                GAME.isRolling = false;
-                syncDiceStatus();
-            }
+                isShaking = false;
+            }, 800);
         }
+
+        // 클릭 및 모바일 터치 드래그 존 스와이프 시 100% 즉각 굴리기 연동
+        document.getElementById('dice-cup').addEventListener('click', triggerCupRoll);
+        document.getElementById('cup-drag-zone').addEventListener('mousedown', () => { dragActive = true; });
+        document.getElementById('cup-drag-zone').addEventListener('mousemove', () => {
+            if (dragActive) {
+                triggerCupRoll();
+                dragActive = false;
+            }
+        });
+        window.addEventListener('mouseup', () => { dragActive = false; });
 
         function triggerEarlyStop() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
@@ -816,25 +795,21 @@
             document.getElementById('current-total-score').textContent = total;
         }
 
-        // --- 도파민 폭발 시각 연출 제어 엔진 ---
         function triggerDopamineEffects() {
             const values = GAME.dice.map(d => d.value);
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
 
-            // 1. 요트 달성 시 대형 이펙트
             if (counts.includes(5)) {
                 spawnDopamineBanner("🎉 🎉 YACHT 요트 달성!! (+50점) 🎉 🎉", "from-amber-500 to-yellow-400 border-yellow-300");
                 return;
             }
 
-            // 2. 63점 보너스 근접 유도용 (눈이 4개 이상 몰려 보너스 확보를 조준할 때)
             if (counts[4] >= 4 || counts[5] >= 4 || counts[6] >= 4) {
                 spawnDopamineBanner("🔥 보너스 대폭 격발 조건 만족!! 고득점 기회 🔥", "from-emerald-600 to-teal-500 border-emerald-400");
                 return;
             }
 
-            // 3. 묵직한 고득점 풀하우스 (66655, 66555 등 눈의 총합이 27점 이상인 경우)
             if (counts.includes(3) && counts.includes(2)) {
                 const sum = values.reduce((a, b) => a + b, 0);
                 if (sum >= 27) {
