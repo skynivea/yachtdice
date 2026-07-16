@@ -21,32 +21,41 @@
             transform: rotateY(180deg);
         }
         
-        /* 컵 흔들기 애니메이션 */
+        /* 컵 물리 흔들기 연출 */
         @keyframes cup-shake {
-            0% { transform: translate(5px, 2px) rotate(4deg); }
-            20% { transform: translate(-4px, -3px) rotate(-5deg); }
-            40% { transform: translate(-7px, 1px) rotate(5deg); }
-            60% { transform: translate(1px, 4px) rotate(-1deg); }
-            80% { transform: translate(-3px, -1px) rotate(4deg); }
-            100% { transform: translate(2px, -2px) rotate(0deg); }
+            0% { transform: translate(6px, 3px) rotate(5deg); }
+            20% { transform: translate(-5px, -4px) rotate(-6deg); }
+            40% { transform: translate(-8px, 2px) rotate(6deg); }
+            60% { transform: translate(2px, 5px) rotate(-2deg); }
+            80% { transform: translate(-4px, -2px) rotate(5deg); }
+            100% { transform: translate(3px, -3px) rotate(0deg); }
         }
         .cup-shaking {
             animation: cup-shake 0.08s infinite !important;
         }
 
-        /* 주사위가 필드로 튀어나올 때의 스케일 애니메이션 */
-        @keyframes dice-pop {
+        /* 컵 회전하면서 주사위 쏟아질 때 전용 회전 팝 */
+        @keyframes dice-roll-pop {
             0% { transform: scale(0) rotate(-180deg); opacity: 0; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
-        .animate-dice-pop {
-            animation: dice-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-dice-roll {
+            animation: dice-roll-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* 홈으로 흡수되는 애니메이션 효과 */
+        /* 클릭해서 홀드 보관할 때는 회전 없이 부드러운 스케일 팝 */
+        @keyframes dice-static-pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-dice-static {
+            animation: dice-static-pop 0.15s ease-out forwards;
+        }
+
+        /* 홈으로 흡수되는 연출 효과 */
         .animate-suck-in {
-            transition: all 0.4s ease-in-out;
-            transform: translateY(-150px) scale(0.3);
+            transition: all 0.3s ease-in-out;
+            transform: translateY(-120px) scale(0.3);
             opacity: 0;
         }
     </style>
@@ -93,11 +102,11 @@
         </section>
 
         <!-- 인게임 화면 -->
-        <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center">
+        <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center relative">
             
             <!-- (좌측): 완벽한 정사각형 5칸 레이아웃의 게임판 -->
-            <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[340px] max-w-[460px] mx-auto lg:mx-0">
-                <!-- 홀드 홈: 검은색 정사각형 홈 5개 -->
+            <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[340px] max-w-[460px] mx-auto lg:mx-0 relative z-10">
+                <!-- 홀드 홈 -->
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">보관용 홀드 홈</h3>
                     <div id="hold-home" class="grid grid-cols-5 gap-3 bg-black border-2 border-slate-900 p-3 rounded-xl"></div>
@@ -108,59 +117,83 @@
                     <h3 class="text-xs font-bold text-red-300 mb-3 uppercase tracking-wider text-center">게임 필드</h3>
                     <div id="roll-field" class="w-full aspect-square max-w-[340px] mx-auto bg-red-950/90 border-2 border-red-800 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
                         <div id="field-empty-msg" class="text-red-300 text-xs font-semibold text-center pointer-events-none absolute z-10 px-4">
-                            주사위가 컵 안에 있습니다. 컵을 흔들어 섞으세요!
+                            주사위가 컵 안에 있습니다. 섞기 버튼이나 컵을 흔들어 섞으세요!
                         </div>
-                        <!-- 내부 주사위는 3x3 그리드로 배치하여 정사각형 비율 보존 -->
                         <div id="field-dice-wrapper" class="grid grid-cols-3 gap-4 w-full relative z-20"></div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-between gap-4 border-t border-slate-700/50 pt-4">
+                <!-- 데스크톱용 하단 리롤 안내바 -->
+                <div class="hidden lg:flex items-center justify-between gap-4 border-t border-slate-700/50 pt-4">
                     <div class="text-sm font-bold">남은 리롤: <span id="game-rolls-left" class="text-emerald-400 text-lg">3</span>회</div>
                     <button onclick="triggerEarlyStop()" id="early-stop-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-300 border border-slate-600 transition-all disabled:opacity-50" disabled>리롤 그만하고 족보 결정</button>
                 </div>
+
+                <!-- 모바일 전용 제어 패널 (lg 미만 화면에만 노출) -->
+                <div class="grid grid-cols-3 gap-2 mt-4 lg:hidden w-full max-w-[340px] mx-auto">
+                    <button id="mobile-shake-btn" onclick="openMobileCup()" class="py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl font-bold text-xs text-white shadow-lg flex flex-col items-center justify-center gap-1 transition-all">
+                        <span>🎲</span>
+                        <span>섞기</span>
+                    </button>
+                    <button id="mobile-score-btn" onclick="openMobileScoreboard()" class="py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-xs text-slate-200 border border-slate-600 flex flex-col items-center justify-center gap-1 transition-all">
+                        <span>📊</span>
+                        <span>점수판 보이기</span>
+                    </button>
+                    <button id="mobile-stop-btn" onclick="triggerEarlyStop()" class="py-3 bg-red-950 hover:bg-red-900 border border-red-800 disabled:opacity-50 rounded-xl font-bold text-xs text-red-200 flex flex-col items-center justify-center gap-1 transition-all" disabled>
+                        <span>⏹️</span>
+                        <span>리롤 중지/확정</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- (중앙): 원통 컵 작동부 -->
-            <div class="w-full lg:w-72 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between items-center shadow-xl relative min-h-[380px]">
+            <!-- (중앙): 주사위 작동부 (모바일에서는 모달 오버레이, 데스크톱에서는 굳건한 컬럼) -->
+            <div id="cup-section" class="fixed inset-0 bg-black/85 z-40 hidden flex-col items-center justify-center p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-72 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-6 lg:justify-between lg:shadow-xl min-h-[380px]">
+                
+                <!-- 모바일 모달 모드에서 닫을 수 있는 취소 버튼 -->
+                <button onclick="closeMobileCup()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
+
                 <div class="text-center">
-                    <h2 class="text-md font-bold text-slate-300">주사위 컵 (Cup)</h2>
-                    <p class="text-[11px] text-slate-400 mt-1">컵을 클릭하거나 드래그하여 마구 흔드세요!</p>
+                    <h2 class="text-lg font-bold text-slate-200">주사위</h2>
+                    <p class="text-[11px] text-slate-400 mt-1">마우스나 손가락으로 마구 끌어서 흔들어보세요!</p>
                 </div>
 
-                <div class="relative flex flex-col items-center justify-center my-auto w-full h-48" id="cup-drag-zone">
+                <div class="relative flex flex-col items-center justify-center my-auto w-full h-56" id="cup-drag-zone">
                     <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-75 relative z-10 select-none">
-                        <span class="text-xs text-zinc-500 font-black tracking-widest uppercase pointer-events-none">MATTE CUP</span>
+                        <!-- MATTE CUP 문구 삭제 -->
                         <div class="flex gap-1 justify-center mt-2 pointer-events-none" id="cup-inside-indicators"></div>
                     </div>
                 </div>
 
-                <!-- 이모티콘 바 -->
-                <div class="w-full bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
+                <!-- 이모티콘 바: 모서리가 둥근 직사각형 밖으로 안 튀어 나가게 길이를 340px로 늘림 -->
+                <div class="w-full max-w-[340px] mx-auto bg-slate-900/60 p-3 rounded-xl border border-slate-700">
                     <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
-                    <div class="flex justify-between gap-1">
-                        <button onclick="triggerEmoji('😭')" class="hover:scale-125 transition-transform text-lg p-1">😭</button>
-                        <button onclick="triggerEmoji('😒')" class="hover:scale-125 transition-transform text-lg p-1">😒</button>
-                        <button onclick="triggerEmoji('🥰')" class="hover:scale-125 transition-transform text-lg p-1">🥰</button>
-                        <button onclick="triggerEmoji('🤣')" class="hover:scale-125 transition-transform text-lg p-1">🤣</button>
-                        <button onclick="triggerEmoji('💢')" class="hover:scale-125 transition-transform text-lg p-1">💢</button>
-                        <button onclick="triggerEmoji('🙅‍♀️')" class="hover:scale-125 transition-transform text-lg p-1">🙅‍♀️</button>
-                        <button onclick="triggerEmoji('🍀')" class="hover:scale-125 transition-transform text-lg p-1">🍀</button>
+                    <div class="flex justify-center gap-3 w-full">
+                        <button onclick="triggerEmoji('😭')" class="hover:scale-125 transition-transform text-xl p-0.5">😭</button>
+                        <button onclick="triggerEmoji('😒')" class="hover:scale-125 transition-transform text-xl p-0.5">😒</button>
+                        <button onclick="triggerEmoji('🥰')" class="hover:scale-125 transition-transform text-xl p-0.5">🥰</button>
+                        <button onclick="triggerEmoji('🤣')" class="hover:scale-125 transition-transform text-xl p-0.5">🤣</button>
+                        <button onclick="triggerEmoji('💢')" class="hover:scale-125 transition-transform text-xl p-0.5">💢</button>
+                        <button onclick="triggerEmoji('🙅‍♀️')" class="hover:scale-125 transition-transform text-xl p-0.5">🙅‍♀️</button>
+                        <button onclick="triggerEmoji('🍀')" class="hover:scale-125 transition-transform text-xl p-0.5">🍀</button>
                     </div>
                 </div>
             </div>
 
-            <!-- (우측): 스코어보드 영역 -->
-            <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl min-w-[340px] flex flex-col justify-between">
+            <!-- (우측): 스코어보드 영역 (모바일에서는 오버레이 팝업, 데스크톱에서는 굳건한 컬럼) -->
+            <div id="scoreboard-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:flex-1 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-5 lg:shadow-xl min-w-[340px] max-w-[460px] mx-auto lg:mx-0">
+                
+                <!-- 모바일용 닫기 버튼 -->
+                <button onclick="closeMobileScoreboard()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
+
                 <div>
-                    <!-- 프로필 이모티콘 팝업 공간 확보를 위한 pt-10 설정 및 오버플로우 잘림 제거 -->
-                    <div class="flex items-center gap-4 pb-5 border-b border-slate-700 mb-4 relative pt-10" id="player-profiles-row"></div>
+                    <!-- 프로필 이모티콘 팝업 전용 헤드 스페이스 -->
+                    <div class="flex items-center gap-3 pb-5 border-b border-slate-700 mb-4 relative pt-10" id="player-profiles-row"></div>
                     
                     <div class="flex justify-between items-center mb-3">
                         <h2 class="text-sm font-bold text-slate-300">점수판 (요트 족보)</h2>
                         <button onclick="toggleGlobalScoreboard()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-300 transition-all">전체 스코어보드</button>
                     </div>
-                    <div class="overflow-y-auto max-h-[360px] border border-slate-700 rounded-lg">
+                    <div class="overflow-y-auto max-h-[340px] border border-slate-700 rounded-lg">
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
                                 <tr class="bg-slate-900 border-b border-slate-700 text-slate-400 font-bold">
@@ -178,6 +211,8 @@
                         <div>보너스(63점 기준): <span id="subtotal-bonus-progress" class="text-slate-400">0 / 63</span></div>
                         <div class="text-base text-emerald-400">총점: <span id="current-total-score">0</span></div>
                     </div>
+                    <!-- 모바일 전용 수동 닫기 안내 (선택형 기입 유도용) -->
+                    <div class="text-[10px] text-slate-500 text-center mt-2 lg:hidden">원하는 족보 항목을 탭하면 점수가 최종 기입됩니다.</div>
                 </div>
             </div>
         </section>
@@ -219,6 +254,7 @@
             currentRound: 1,      
             rollsLeft: 3,
             isRolling: false,     
+            justRolled: false, // 롤링 결과물인지 단순 홀드 이동인지 판별 플래그 (중요)
             dice: [
                 { value: 1, held: false },
                 { value: 1, held: false },
@@ -243,6 +279,82 @@
             { id: 'largeStraight', name: '라지 스트레이트', desc: '이어지는 눈 5개 (30점)' },
             { id: 'yacht', name: '요트', desc: '동일 눈 5개 (50점)' }
         ];
+
+        // --- Web Audio API 자가 물리 합성 사운드 엔진 (달그락 소리 생성기) ---
+        let audioCtx = null;
+        function playClatterSound() {
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                // 나무와 플라스틱 주사위 특유의 비진동 복합 주파수 생성
+                osc.type = Math.random() > 0.4 ? 'triangle' : 'sawtooth';
+                osc.frequency.setValueAtTime(120 + Math.random() * 230, audioCtx.currentTime);
+                
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+                
+                // 원통 속 울림 필터 연동
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 700;
+                filter.Q.value = 2.5;
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.06);
+            } catch (e) {
+                console.log("Audio play blocked or unsupported:", e);
+            }
+        }
+
+        // --- 모바일 전용 뷰 및 오버레이 모달 스위칭 엔진 ---
+        function openMobileCup() {
+            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
+            if (!isMyTurn) return alert("당신의 차례가 아닙니다!");
+            if (GAME.rollsLeft <= 0) return alert("남은 리롤 횟수가 없습니다! 점수를 기록하세요.");
+            if (GAME.isRolling) return;
+
+            // 모바일일 때만 오버레이 활성화
+            if (window.innerWidth < 1024) {
+                const cupSec = document.getElementById('cup-section');
+                cupSec.classList.remove('hidden');
+                cupSec.classList.add('flex');
+            }
+        }
+
+        function closeMobileCup() {
+            if (window.innerWidth < 1024) {
+                const cupSec = document.getElementById('cup-section');
+                cupSec.classList.add('hidden');
+                cupSec.classList.remove('flex');
+            }
+        }
+
+        function openMobileScoreboard() {
+            if (window.innerWidth < 1024) {
+                const scoreSec = document.getElementById('scoreboard-section');
+                scoreSec.classList.remove('hidden');
+                scoreSec.classList.add('flex');
+            }
+        }
+
+        function closeMobileScoreboard() {
+            if (window.innerWidth < 1024) {
+                const scoreSec = document.getElementById('scoreboard-section');
+                scoreSec.classList.add('hidden');
+                scoreSec.classList.remove('flex');
+            }
+        }
 
         function showJoinInput() {
             document.getElementById('lobby-buttons').classList.add('hidden');
@@ -270,12 +382,11 @@
             socket.emit('startGame');
         }
 
-        // --- 소켓 통신 바인딩 ---
+        // --- 소켓 네트워킹 핵심 바인딩 ---
         socket.on('roomCreated', ({ roomCode, players }) => {
             handleRoomEntry(roomCode, players);
         });
 
-        // 버그 1 해결: 참가자가 방 입장에 성공했을 때 정상적으로 화면을 전환하도록 이벤트를 전용 설계
         socket.on('roomJoined', ({ roomCode, players }) => {
             handleRoomEntry(roomCode, players);
         });
@@ -361,6 +472,9 @@
 
         socket.on('diceRolled', ({ dice, rollCount }) => {
             document.getElementById('dice-cup').classList.remove('cup-shaking');
+            
+            // 롤링 상태 활성화 -> 3D 회전 애니메이션 발동시킴
+            GAME.justRolled = true; 
             GAME.dice = dice;
             GAME.rollsLeft = 3 - rollCount;
             GAME.isRolling = false;
@@ -371,9 +485,17 @@
             syncDiceStatus();
             calculateAllPotentialScores();
             triggerDopamineEffects();
+
+            // 리롤 3번 다 썼을 때 모바일에서 스코어판을 즉시 자동으로 열어줌
+            if (GAME.rollsLeft === 0) {
+                setTimeout(() => {
+                    openMobileScoreboard();
+                }, 1300);
+            }
         });
 
         socket.on('dieToggled', ({ dice }) => {
+            GAME.justRolled = false; // 단순 토글 이동이므로 회전 효과 무력화
             GAME.dice = dice;
             syncDiceStatus();
             calculateAllPotentialScores();
@@ -385,19 +507,24 @@
             });
 
             setTimeout(() => {
+                GAME.justRolled = false;
                 GAME.dice = dice;
                 GAME.rollsLeft = 0;
                 document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
                 document.getElementById('early-stop-btn').disabled = true;
                 syncDiceStatus();
                 calculateAllPotentialScores();
-            }, 400);
+
+                // 리롤 수동 중단하고 족보 기입시 즉시 스코어 보드 띄워줌
+                openMobileScoreboard();
+            }, 300);
         });
 
         socket.on('scoreRecorded', ({ playerId, scoreBoard }) => {
             const p = GAME.players.find(pl => pl.id === playerId);
             if (p) p.scoreBoard = scoreBoard;
             renderScoreboard();
+            closeMobileScoreboard(); // 기입 완료 시 모바일 모달 닫기
         });
 
         socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
@@ -405,10 +532,15 @@
             GAME.currentRound = round;
             GAME.dice = gameState.dice;
             GAME.rollsLeft = 3 - gameState.rollCount;
+            GAME.justRolled = false;
 
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = true;
             GAME.isRolling = false;
+
+            // 모바일 닫기 안전장치
+            closeMobileCup();
+            closeMobileScoreboard();
 
             setupGamePlay();
         });
@@ -430,7 +562,7 @@
             declareGameOverAndRank(players);
         });
 
-        // --- UI 비주얼 렌더링 엔진 ---
+        // --- 클라이언트 UI 및 이모지 렌더러 ---
         function updateLobbyUI(players) {
             const listContainer = document.getElementById('player-list');
             const countEl = document.getElementById('player-count');
@@ -506,7 +638,6 @@
                 avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[75px] relative transition-all duration-300
                     ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md shadow-emerald-950 opacity-100' : 'bg-slate-900 border-slate-800 opacity-50'}`;
                 
-                // 버그 4 해결: 이모티콘이 상단에서 잘리지 않도록 -top-8로 고정 및 트랜지션 보완
                 avatarEl.innerHTML = `
                     <div id="emoji-bubble-${p.id}" class="absolute -top-8 bg-white border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50 transform translate-y-0"></div>
                     <img src="${avatar}" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-slate-700" />
@@ -558,7 +689,7 @@
             }
         }
 
-        // 버그 3 해결: 유동 배열 생성 로직을 완전히 비우고 다시 채워 렌더링 꼬임 현상 원천 차단
+        // --- 주사위 동기화 & 모바일 전용 수동 버튼 연계 엔진 ---
         function syncDiceStatus() {
             const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
@@ -573,31 +704,43 @@
             let heldCount = 0;
             let fieldCount = 0;
 
+            // 회전 여부 구분 애니메이션 클래스 할당
+            const rollClass = GAME.justRolled ? "animate-dice-roll" : "animate-dice-static";
+
             GAME.dice.forEach((die, idx) => {
                 if (die.held) {
                     heldCount++;
                     const dieDiv = document.createElement('div');
-                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-zinc-100 border-zinc-300");
+                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-zinc-100 border-zinc-300", "animate-dice-static");
                     const element = dieDiv.firstElementChild;
                     if (isMyTurn && !GAME.isRolling) {
-                        element.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
+                        element.addEventListener('click', () => {
+                            GAME.justRolled = false; // 토글 시 회전 무력화
+                            socket.emit('toggleDie', { index: idx });
+                        });
                     }
                     homeContainer.appendChild(element);
                 } else {
                     if (!shouldHideField) {
                         fieldCount++;
                         const dieDiv = document.createElement('div');
-                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-zinc-50 border-zinc-200 animate-dice-pop", "field-dice-active");
+                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-zinc-50 border-zinc-200 " + rollClass, "field-dice-active");
                         const element = dieDiv.firstElementChild;
                         if (isMyTurn) {
-                            element.addEventListener('click', () => socket.emit('toggleDie', { index: idx }));
+                            element.addEventListener('click', () => {
+                                GAME.justRolled = false; // 토글 시 회전 무력화
+                                socket.emit('toggleDie', { index: idx });
+                            });
                         }
                         fieldWrapper.appendChild(element);
                     }
                 }
             });
 
-            // 빈 슬롯 수에 맞춰 가이드 점선 박스 채워 정렬 모양새 일치
+            // 렌더링 이후 롤링 애니메이션 플래그 초기화 (다음 클릭 시 안 돌도록 제어)
+            GAME.justRolled = false;
+
+            // 가이드 빈 박스 생성
             for (let i = heldCount; i < 5; i++) {
                 const emptySlot = document.createElement('div');
                 emptySlot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square bg-black/40";
@@ -617,42 +760,135 @@
                 emptyMsg.textContent = GAME.isRolling ? "컵 내부에서 격렬히 섞이는 중..." : "주사위가 컵 안에 있습니다. 흔들어서 굴리세요!";
             }
             updateCupInsideIndicators();
+            syncMobileControlButtons(); // 모바일 전용 삼총사 제어기 연동
         }
 
-        // --- 버그 3 해결: 클릭 및 드래그 흔들기 연출 통합 및 즉시 격발 엔진 ---
-        let isShaking = false;
-        let dragActive = false;
-
-        function triggerCupRoll() {
+        function syncMobileControlButtons() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn || GAME.rollsLeft <= 0 || isShaking) return;
+            const shakeBtn = document.getElementById('mobile-shake-btn');
+            const stopBtn = document.getElementById('mobile-stop-btn');
 
-            isShaking = true;
-            GAME.isRolling = true;
-            syncDiceStatus();
-            socket.emit('shakeCup');
+            if (shakeBtn) {
+                if (isMyTurn && GAME.rollsLeft > 0 && !GAME.isRolling) {
+                    shakeBtn.removeAttribute('disabled');
+                    shakeBtn.className = "py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-xs text-white shadow-lg flex flex-col items-center justify-center gap-1 transition-all";
+                } else {
+                    shakeBtn.setAttribute('disabled', 'true');
+                    shakeBtn.className = "py-3 bg-slate-800 text-slate-600 border border-slate-700/40 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 opacity-40 cursor-not-allowed transition-all";
+                }
+            }
 
-            const cup = document.getElementById('dice-cup');
-            cup.classList.add('cup-shaking');
+            if (stopBtn) {
+                if (isMyTurn && GAME.rollsLeft > 0 && GAME.rollsLeft < 3 && !GAME.isRolling) {
+                    stopBtn.removeAttribute('disabled');
+                    stopBtn.className = "py-3 bg-red-600 hover:bg-red-500 border border-red-500 text-white rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all";
+                } else {
+                    stopBtn.setAttribute('disabled', 'true');
+                    stopBtn.className = "py-3 bg-slate-800 text-slate-600 border border-slate-700/40 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 opacity-40 cursor-not-allowed transition-all";
+                }
+            }
+        }
 
-            // 800ms 동안 시각적으로 요동치게 컵을 흔든 후 최종 쏟아져 나오게 처리
-            setTimeout(() => {
+        // --- 물리 드래그 & 속도 감응형 달그락 소리 엔진 구현 ---
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let accumulatedDistance = 0;
+        let lastPointerX = 0;
+        let lastPointerY = 0;
+        let shakeTriggered = false;
+
+        const cup = document.getElementById('dice-cup');
+        const dragZone = document.getElementById('cup-drag-zone');
+
+        function startDrag(e) {
+            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
+            if (!isMyTurn || GAME.rollsLeft <= 0 || GAME.isRolling) return;
+
+            isDragging = true;
+            shakeTriggered = false;
+            accumulatedDistance = 0;
+
+            const pointer = e.touches ? e.touches[0] : e;
+            dragStartX = pointer.clientX;
+            dragStartY = pointer.clientY;
+            lastPointerX = pointer.clientX;
+            lastPointerY = pointer.clientY;
+
+            cup.style.transition = 'none'; // 드래그 도중에는 부드러운 복귀 트랜지션 해제
+        }
+
+        function moveDrag(e) {
+            if (!isDragging) return;
+            
+            // 모바일 드래그 시 브라우저 스크롤 바운싱 현상 전면 가로막기
+            if (e.cancelable) {
+                e.preventDefault();
+            }
+
+            const pointer = e.touches ? e.touches[0] : e;
+            let dx = pointer.clientX - dragStartX;
+            let dy = pointer.clientY - dragStartY;
+
+            // 컵이 작동부 밖으로 영원히 도망가지 않도록 원반 반경 130px 한계 제한
+            const limitRadius = 130;
+            const currentDist = Math.sqrt(dx * dx + dy * dy);
+            if (currentDist > limitRadius) {
+                const angle = Math.atan2(dy, dx);
+                dx = Math.cos(angle) * limitRadius;
+                dy = Math.sin(angle) * limitRadius;
+            }
+
+            cup.style.transform = `translate(${dx}px, ${dy}px)`;
+
+            // 드래그 누적 연산 및 달그락 효과음 유도 연산
+            const step = Math.sqrt(Math.pow(pointer.clientX - lastPointerX, 2) + Math.pow(pointer.clientY - lastPointerY, 2));
+            if (step > 12) {
+                accumulatedDistance += step;
+                playClatterSound(); // 드래그 속도와 주기에 정비례하여 자가 발전 사운드 격발
+                lastPointerX = pointer.clientX;
+                lastPointerY = pointer.clientY;
+
+                // 충분히 마구 흔들었다면 컵 고주파 요동 애니메이션 활성화 및 서버 신호 전송
+                if (accumulatedDistance > 380 && !shakeTriggered) {
+                    shakeTriggered = true;
+                    cup.classList.add('cup-shaking');
+                    socket.emit('shakeCup');
+                }
+            }
+        }
+
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // 드래그 종료 시 원래 위치(0,0)로 통통 튀며 복귀하는 탄성 스프링 애니메이션 부여
+            cup.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            cup.style.transform = 'translate(0px, 0px)';
+
+            if (shakeTriggered) {
                 cup.classList.remove('cup-shaking');
                 socket.emit('rollDice');
-                isShaking = false;
-            }, 800);
+                
+                // 모바일 환경이었다면 롤 완료 시 컵 드래그 모달 자동으로 매끄럽게 닫아주기
+                setTimeout(() => {
+                    closeMobileCup();
+                }, 300);
+            } else {
+                cup.classList.remove('cup-shaking');
+            }
         }
 
-        // 클릭 및 모바일 터치 드래그 존 스와이프 시 100% 즉각 굴리기 연동
-        document.getElementById('dice-cup').addEventListener('click', triggerCupRoll);
-        document.getElementById('cup-drag-zone').addEventListener('mousedown', () => { dragActive = true; });
-        document.getElementById('cup-drag-zone').addEventListener('mousemove', () => {
-            if (dragActive) {
-                triggerCupRoll();
-                dragActive = false;
-            }
-        });
-        window.addEventListener('mouseup', () => { dragActive = false; });
+        // 데스크톱 마우스 바인딩
+        cup.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', moveDrag);
+        window.addEventListener('mouseup', endDrag);
+
+        // 모바일 손가락 터치 바인딩 (수동 패시브 가로막기)
+        cup.addEventListener('touchstart', startDrag, { passive: false });
+        window.addEventListener('touchmove', moveDrag, { passive: false });
+        window.addEventListener('touchend', endDrag);
+
 
         function triggerEarlyStop() {
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
@@ -660,7 +896,7 @@
             socket.emit('stopReRoll');
         }
 
-        // 스코어 계산 엔진
+        // 스코어보드 수치 연산기
         function getComputedScore(catId, values) {
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
