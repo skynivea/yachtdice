@@ -52,7 +52,7 @@ io.on('connection', (socket) => {
         socket.emit('roomCreated', { roomCode, players: rooms[roomCode].players });
     });
 
-    // 방 들어가기 (6명 입장 제한 및 이미 게임 시작된 방 차단 완벽 검증)
+    // 방 들어가기 (버그 1 해결: 신규 가입자 전용 'roomJoined' 및 기존원 전용 'roomUpdated' 분리 방출)
     socket.on('joinRoom', ({ roomCode, name }) => {
         const room = rooms[roomCode];
         if (!room) return socket.emit('joinError', '방이 존재하지 않습니다.');
@@ -63,10 +63,11 @@ io.on('connection', (socket) => {
         currentRoom = roomCode;
         socket.join(roomCode);
         
-        io.to(roomCode).emit('roomUpdated', { players: room.players });
+        socket.emit('roomJoined', { roomCode, players: room.players });
+        socket.to(roomCode).emit('roomUpdated', { players: room.players });
     });
 
-    // 게임 시작 (카드 순서 결정 또는 1인 즉시 시작)
+    // 게임 시작
     socket.on('startGame', () => {
         const room = rooms[currentRoom];
         if (!room || room.players[0].id !== socket.id) return;
@@ -88,7 +89,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 카드 뽑기 연출 로직
+    // 카드 순서 뒤집기 선택
     socket.on('selectCard', ({ cardIndex }) => {
         const room = rooms[currentRoom];
         if (!room || room.status !== 'card_selection') return;
@@ -101,14 +102,12 @@ io.on('connection', (socket) => {
 
         io.to(currentRoom).emit('cardSelected', { cardIndex, playerName, playerId: socket.id });
 
-        // 전원 카드 수집 완료 시 즉시 정렬 연출 전송
         if (Object.keys(room.cardSelections).length === room.players.length) {
             room.players.forEach(p => {
                 const selIdx = room.cardSelections[p.id];
                 p.order = room.preparedCards[selIdx];
             });
 
-            // 추출 순위별 자동 상단 프로필 실시간 재배열
             room.players.sort((a, b) => a.order - b.order);
             room.status = 'playing';
             room.currentTurnIdx = 0;
@@ -157,7 +156,6 @@ io.on('connection', (socket) => {
         const currentPlayer = room.players[room.currentTurnIdx];
         if (currentPlayer.id !== socket.id || room.gameState.rollCount >= 3) return;
 
-        // 홀드 홈(held: true)을 제외한 오직 필드의 주사위만 무작위 난수 변형 후 방출
         room.gameState.dice.forEach((die) => {
             if (!die.held) {
                 die.value = Math.floor(Math.random() * 6) + 1;
@@ -184,7 +182,6 @@ io.on('connection', (socket) => {
         io.to(currentRoom).emit('dieToggled', { index, dice: room.gameState.dice });
     });
 
-    // 리롤 조기 종료 규칙
     socket.on('stopReRoll', () => {
         const room = rooms[currentRoom];
         if (!room || room.status !== 'playing') return;
@@ -192,14 +189,12 @@ io.on('connection', (socket) => {
         const currentPlayer = room.players[room.currentTurnIdx];
         if (currentPlayer.id !== socket.id || room.gameState.rollCount === 0) return;
 
-        // 필드 주사위 자동 전체 보관 처리
         room.gameState.dice.forEach(die => die.held = true);
         room.gameState.rollCount = 3;
 
         io.to(currentRoom).emit('reRollStopped', { dice: room.gameState.dice });
     });
 
-    // 점수 최종 기입 및 다음 턴 마이그레이션
     socket.on('recordScore', ({ category, score }) => {
         const room = rooms[currentRoom];
         if (!room || room.status !== 'playing') return;
@@ -224,7 +219,6 @@ io.on('connection', (socket) => {
                 room.round += 1;
             }
 
-            // 모든 플레이어가 12칸을 전부 완주했는지 스캔
             const totalCategories = 12;
             const isFinished = room.players.every(p => Object.keys(p.scoreBoard).length === totalCategories);
 
@@ -247,7 +241,6 @@ io.on('connection', (socket) => {
         io.to(currentRoom).emit('emojiReceived', { playerId: socket.id, emoji });
     });
 
-    // 탈주자 발생 대응 안전 스킵 설계 (완주 보증)
     socket.on('disconnect', () => {
         if (currentRoom && rooms[currentRoom]) {
             const room = rooms[currentRoom];
