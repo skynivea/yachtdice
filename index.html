@@ -379,12 +379,18 @@
 
         // 1인 플레이(카드 셔플 불필요) 시 바로 게임 시작 수신
         socket.on('gameStarted', ({ players, currentTurnIdx }) => {
-            GAME.players = players;
-            GAME.currentPlayerIdx = currentTurnIdx;
-            document.getElementById('lobby-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            setupGamePlay();
-        });
+    GAME.players = players;
+    GAME.currentPlayerIdx = currentTurnIdx;
+    
+    // 서버가 주는 최초 턴 상태에 맞춰 리롤 기회 3회로 강제 리셋
+    GAME.rollsLeft = 3; 
+    document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
+    document.getElementById('early-stop-btn').disabled = true;
+
+    document.getElementById('lobby-screen').classList.add('hidden');
+    document.getElementById('game-screen').classList.remove('hidden');
+    setupGamePlay();
+});
 
         // 주사위 흔드는 시각 효과 (서버에서 shakeCup 이벤트를 브로드캐스트 받았을 때)
         socket.on('shakingCup', ({ playerId }) => {
@@ -450,19 +456,21 @@
         });
 
         // 다음 차례/라운드 전환 수신
-        socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
-            GAME.currentPlayerIdx = currentTurnIdx;
-            GAME.currentRound = round;
-            GAME.dice = gameState.dice;
-            GAME.rollsLeft = 3 - gameState.rollCount;
+       socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
+    GAME.currentPlayerIdx = currentTurnIdx;
+    GAME.currentRound = round;
+    GAME.dice = gameState.dice;
+    
+    // [버그 수정] 서버가 준 rollCount를 기반으로 완벽 동기화 (3 - 0 = 3회)
+    GAME.rollsLeft = 3 - gameState.rollCount; 
 
-            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
-            document.getElementById('early-stop-btn').disabled = true;
-            
-            renderPlayerProfiles();
-            syncDiceStatus();
-            renderScoreboard();
-        });
+    document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
+    document.getElementById('early-stop-btn').disabled = (GAME.rollsLeft === 3 || GAME.rollsLeft === 0);
+    
+    renderPlayerProfiles();
+    syncDiceStatus();
+    renderScoreboard();
+});
 
         // 실시간 이모티콘 팝업 수신 (서버에서 받아서 해당 플레이어 머리 위에 표시)
         socket.on('emojiReceived', ({ playerId, emoji }) => {
@@ -624,74 +632,75 @@
         }
 
         // --- 주사위 동기화 (검정 홀드 홈 5칸 구조 보존) ---
-        function syncDiceStatus() {
-            const homeContainer = document.getElementById('hold-home');
-            const fieldWrapper = document.getElementById('field-dice-wrapper');
-            const emptyMsg = document.getElementById('field-empty-msg');
+        // [최종 수정] 서버 'ready' 상태 및 컵 안 보관 규칙을 반영한 동기화 함수
+function syncDiceStatus() {
+    const homeContainer = document.getElementById('hold-home');
+    const fieldWrapper = document.getElementById('field-dice-wrapper');
+    const emptyMsg = document.getElementById('field-empty-msg');
 
-            // 1. 홀드 홈 초기화 (기본 빈 5칸 슬롯 생성)
-            homeContainer.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const slot = document.createElement('div');
-                slot.className = "border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center";
-                homeContainer.appendChild(slot);
-            }
+    // 1. 홀드 홈 초기화 (검정색 5칸 슬롯은 항상 유지)
+    homeContainer.innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+        const slot = document.createElement('div');
+        slot.className = "border-2 border-dashed border-slate-800 rounded-lg h-12 flex items-center justify-center";
+        homeContainer.appendChild(slot);
+    }
 
-            // 2. 필드 초기화
-            fieldWrapper.innerHTML = '';
+    fieldWrapper.innerHTML = '';
+    let hasFieldDice = false;
+    let currentHomeSlotIdx = 0;
 
-            let hasFieldDice = false;
-            let currentHomeSlotIdx = 0;
+    // 현재 턴의 주인 확인
+    const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
 
-            GAME.dice.forEach((die, idx) => {
-                const isMyTurn = GAME.players[GAME.currentPlayerIdx].id === socket.id;
+    // [중요] 아직 한 번도 안 굴린 상태(남은 리롤 3회)라면 주사위는 '컵 안'에 있습니다.
+    const isBeforeFirstRoll = (GAME.rollsLeft === 3);
 
-                if (die.held) {
-                    // 홈 영역의 빈 슬롯 칸을 순서대로 실제 주사위로 채움
-                    const slots = homeContainer.children;
-                    if (slots[currentHomeSlotIdx]) {
-                        const dieDiv = document.createElement('div');
-                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-slate-100 border-slate-300");
-                        
-                        // 홈 주사위 클릭 시 -> 서버에 토글 요청 전송
-                        if (isMyTurn) {
-                            dieDiv.firstChild.addEventListener('click', () => {
-                                if (GAME.isRolling) return;
-                                socket.emit('toggleDie', { index: idx });
-                            });
-                        }
-                        slots[currentHomeSlotIdx].replaceWith(dieDiv.firstChild);
-                        currentHomeSlotIdx++;
-                    }
-                } else {
-                    // 주사위를 1회라도 리롤하여 서버 카운트가 돌았을 때만 필드에 렌더링
-                    const isRolledAtLeastOnce = (GAME.rollsLeft < 3);
-                    if (isRolledAtLeastOnce) {
-                        hasFieldDice = true;
-                        const dieDiv = document.createElement('div');
-                        dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
-                        
-                        // 필드 주사위 클릭 시 -> 서버에 토글 요청 전송 (홈으로 이동)
-                        if (isMyTurn) {
-                            dieDiv.firstChild.addEventListener('click', () => {
-                                if (GAME.isRolling) return;
-                                socket.emit('toggleDie', { index: idx });
-                            });
-                        }
-                        fieldWrapper.appendChild(dieDiv.firstChild);
-                    }
+    GAME.dice.forEach((die, idx) => {
+        if (die.held) {
+            // 보관(Hold)된 주사위는 검정 홀드 홈에 순서대로 배치
+            const slots = homeContainer.children;
+            if (slots[currentHomeSlotIdx]) {
+                const dieDiv = document.createElement('div');
+                dieDiv.innerHTML = generateDiceHTML(die.value, "bg-slate-100 border-slate-300");
+                
+                if (isMyTurn && !isBeforeFirstRoll) {
+                    dieDiv.firstChild.addEventListener('click', () => {
+                        if (GAME.isRolling) return;
+                        socket.emit('toggleDie', { index: idx });
+                    });
                 }
-            });
-
-            if (hasFieldDice) {
-                emptyMsg.classList.add('hidden');
-            } else {
-                emptyMsg.classList.remove('hidden');
+                slots[currentHomeSlotIdx].replaceWith(dieDiv.firstChild);
+                currentHomeSlotIdx++;
             }
-
-            updateCupInsideIndicators();
+        } else {
+            // [규칙 적용] 첫 롤을 굴리기 전(리롤 기회 3회 남음)에는 필드에 주사위를 그리지 않고 숨깁니다.
+            if (!isBeforeFirstRoll) {
+                hasFieldDice = true;
+                const dieDiv = document.createElement('div');
+                dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
+                
+                if (isMyTurn) {
+                    dieDiv.firstChild.addEventListener('click', () => {
+                        if (GAME.isRolling) return;
+                        socket.emit('toggleDie', { index: idx });
+                    });
+                }
+                fieldWrapper.appendChild(dieDiv.firstChild);
+            }
         }
+    });
 
+    // 주사위가 필드에 튀어나왔을 때만 빈 필드 안내 문구를 숨깁니다.
+    if (hasFieldDice) {
+        emptyMsg.classList.add('hidden');
+    } else {
+        emptyMsg.classList.remove('hidden');
+    }
+
+    // 컵 안에 들어가 있는 주사위 수만큼 녹색 LED 불빛 인디케이터 표시
+    updateCupInsideIndicators();
+}
         // 리롤 중 굴러가는 역동적인 눈 렌더링 연출용 함수
         function renderRollFieldVisuals(fake = false) {
             if (!fake) return;
