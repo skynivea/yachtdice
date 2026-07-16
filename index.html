@@ -45,7 +45,7 @@
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
         .animate-dice-pop {
-            animation: dice-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: dice-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
     </style>
 </head>
@@ -93,26 +93,28 @@
         <!-- 인게임 화면 -->
         <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center">
             
-            <!-- (좌측): 완벽한 정사각형 슬롯 구조의 보관함 및 게임 필드 -->
+            <!-- (좌측): 완벽한 정사각형 5칸 레이아웃의 보관함 및 게임 필드 -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[320px] max-w-[450px] mx-auto lg:mx-0">
                 
-                <!-- 홀드 홈: 5개의 '정사각형' 슬롯 (aspect-square 적용) -->
+                <!-- 홀드 홈: 5개의 완벽한 '정사각형' 슬롯 -->
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">보관용 홀드 홈 (Hold Home)</h3>
                     <div id="hold-home" class="grid grid-cols-5 gap-3 bg-black border-2 border-slate-700 p-3 rounded-xl">
-                        <!-- JS에서 완벽한 정사각형(aspect-square) 슬롯으로 자동 동적 생성됩니다 -->
+                        <!-- JS에서 정사각형 슬롯 5개로 생성됨 -->
                     </div>
                 </div>
 
-                <!-- 게임 필드: 빨간색 영역 역시 컴팩트한 주사위 정사각형 슬롯형 레이아웃으로 변경 -->
+                <!-- 게임 필드: 빨간색 영역 역시 5개의 완벽한 정사각형 슬롯 레이아웃으로 변경 -->
                 <div class="my-6">
                     <h3 class="text-xs font-bold text-red-300 mb-3 uppercase tracking-wider text-center">게임 필드 (Roll Field)</h3>
-                    <div id="roll-field" class="bg-red-800 border-2 border-red-700 rounded-xl p-3 min-h-[100px] flex items-center justify-center relative">
-                        <div id="field-empty-msg" class="text-red-200 text-xs font-semibold text-center pointer-events-none absolute z-10 px-4">
-                            주사위들이 컵 안에 보관되어 있습니다. 컵을 눌러 흔드세요!
+                    <div id="roll-field" class="bg-red-950/80 border-2 border-red-800 rounded-xl p-3 min-h-[110px] flex items-center justify-center relative">
+                        <div id="field-empty-msg" class="text-red-300 text-xs font-semibold text-center pointer-events-none absolute z-10 px-4">
+                            주사위가 컵 안에 있습니다. 컵을 눌러 흔드세요!
                         </div>
-                        <!-- 필드 주사위도 정렬이 깨지지 않게 5칸 그리드(aspect-square) 형태로 배치 가능하게 래퍼를 씌웁니다 -->
-                        <div id="field-dice-wrapper" class="grid grid-cols-5 gap-3 w-full relative z-20"></div>
+                        <!-- 필드 주사위도 겹치거나 늘어지지 않는 완벽한 5칸 정사각형 슬롯 배치 -->
+                        <div id="field-dice-wrapper" class="grid grid-cols-5 gap-3 w-full relative z-20">
+                            <!-- JS에서 정사각형 슬롯 5개로 생성됨 -->
+                        </div>
                     </div>
                 </div>
 
@@ -123,7 +125,7 @@
                 </div>
             </div>
 
-            <!-- (중앙): 원통 컵 작동부 -->
+            <!-- (중앙): 원통 컵 작동부 및 작동 원활한 이모티콘 바 -->
             <div class="w-full lg:w-72 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between items-center shadow-xl relative min-h-[350px]">
                 <div class="text-center">
                     <h2 class="text-md font-bold text-slate-300">주사위 컵</h2>
@@ -139,6 +141,7 @@
                     </div>
                 </div>
 
+                <!-- 이모티콘 바 -->
                 <div class="w-full bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
                     <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
                     <div class="flex justify-between gap-1">
@@ -156,7 +159,9 @@
             <!-- (우측): 스코어보드 영역 -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl min-w-[320px] flex flex-col justify-between">
                 <div>
-                    <div class="flex items-center gap-2 overflow-x-auto pb-3 border-b border-slate-700 mb-4" id="player-profiles-row"></div>
+                    <!-- 상단 프로필 가로 한 줄 (여기에 이모티콘 팝업 말풍선이 출력됩니다) -->
+                    <div class="flex items-center gap-4 overflow-x-auto pb-5 border-b border-slate-700 mb-4 h-24" id="player-profiles-row"></div>
+                    
                     <div class="flex justify-between items-center mb-3">
                         <h2 class="text-sm font-bold text-slate-300">점수판 (요트 족보)</h2>
                         <button onclick="toggleGlobalScoreboard()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-300 transition-all">전체 스코어보드</button>
@@ -182,7 +187,7 @@
         </section>
     </main>
 
-    <!-- 모달 창들 생략하지 않고 완벽 유지 -->
+    <!-- 모달 창들 -->
     <div id="global-scoreboard-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-4xl rounded-2xl p-6 shadow-2xl relative">
             <button onclick="toggleGlobalScoreboard()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold">✕</button>
@@ -348,25 +353,25 @@
             cup.classList.add('cup-shaking');
         });
 
-        // [버그 즉각 디버깅 완료] 서버가 준 주사위 배열 데이터를 클라이언트에 강제 주입 후 화면 즉시 갱신
+        // [버그 즉각 디버깅] 서버가 준 주사위 정보를 강제 적용 후 즉시 필드에 방출
         socket.on('diceRolled', ({ dice, rollCount }) => {
             const cup = document.getElementById('dice-cup');
             cup.classList.remove('cup-shaking');
 
             GAME.dice = dice;
             GAME.rollsLeft = 3 - rollCount;
-            GAME.isRolling = true; // 흔들고 방출되는 연출 상태 진입
+            GAME.isRolling = true; // 가상 흔들기 연출 진입
 
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = (GAME.rollsLeft === 0);
 
-            // 컵 속으로 주사위가 즉시 들어간 연출을 위해 임시로 렌더링 초기화
+            // 컵 속으로 주사위가 들어갔다는 것을 표현하기 위해 임시 동기화 (주사위 숨김)
             syncDiceStatus(); 
 
-            // 0.4초간 가상 섞기 연출이 끝난 뒤, 주사위들이 게임 필드로 시원하게 쏟아져 나오게 강제 트리거!
+            // 0.4초 후, 컵 속에서 튕겨나오며 게임 필드(정사각형 슬롯들)에 애니메이션과 함께 등장!
             setTimeout(() => {
                 GAME.isRolling = false; 
-                syncDiceStatus(); // 이 타이밍에 실제로 필드에 튀어나옴!
+                syncDiceStatus(); // 필드에 주사위들이 그려짐!
                 calculateAllPotentialScores();
                 triggerDopamineEffects();
             }, 400);
@@ -409,12 +414,19 @@
             renderScoreboard();
         });
 
+        // [이모티콘 완벽 복구] 서버에서 전달받은 이모티콘을 말풍선에 노출하고 사라지게 만드는 로직
         socket.on('emojiReceived', ({ playerId, emoji }) => {
             const bubble = document.getElementById(`emoji-bubble-${playerId}`);
             if (bubble) {
                 bubble.textContent = emoji;
                 bubble.style.opacity = '1';
-                setTimeout(() => bubble.style.opacity = '0', 2000);
+                bubble.style.transform = 'translateY(-10px) scale(1.1)';
+                
+                // 2초 뒤에 자연스럽게 숨기기
+                setTimeout(() => {
+                    bubble.style.opacity = '0';
+                    bubble.style.transform = 'translateY(0px) scale(1)';
+                }, 2000);
             }
         });
 
@@ -489,6 +501,7 @@
             renderScoreboard();
         }
 
+        // [이모티콘 말풍선 포함] 플레이어 프로필 렌더링 함수 완벽화
         function renderPlayerProfiles() {
             const container = document.getElementById('player-profiles-row');
             container.innerHTML = '';
@@ -497,13 +510,14 @@
                 const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(p.name)}`;
 
                 const avatarEl = document.createElement('div');
-                avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[70px] relative transition-all duration-300
+                avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[75px] relative transition-all duration-300
                     ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md shadow-emerald-950' : 'bg-slate-900 border-slate-800 opacity-60'}`;
                 
+                // 각 플레이어별로 고유 id를 가진 '이모티콘 말풍선(emoji-bubble)'이 여기에 확실하게 삽입됩니다!
                 avatarEl.innerHTML = `
-                    <div id="emoji-bubble-${p.id}" class="absolute -top-10 bg-white text-slate-900 text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
-                    <img src="${avatar}" class="w-10 h-10 rounded-full bg-slate-800" />
-                    <span class="text-[10px] font-bold mt-1 text-slate-300 truncate max-w-[60px]">${p.name}</span>
+                    <div id="emoji-bubble-${p.id}" class="absolute -top-12 bg-white border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50 transform translate-y-0"></div>
+                    <img src="${avatar}" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-slate-700" />
+                    <span class="text-[10px] font-bold mt-1.5 text-slate-300 truncate max-w-[65px]">${p.name}</span>
                 `;
                 container.appendChild(avatarEl);
             });
@@ -513,7 +527,7 @@
             socket.emit('sendEmoji', { emoji });
         }
 
-        // SVG 형태의 주사위 눈 생성 (완벽한 정사각형 비율 유지)
+        // SVG 주사위 그래픽 (정사각형 비율 유지)
         function generateDiceHTML(value, colorClass = "bg-white") {
             const dotsLayout = {
                 1: [[50, 50]],
@@ -546,6 +560,7 @@
             container.innerHTML = '';
             
             let unheldInCupCount = 0;
+            // 리롤을 한 번도 안 했거나 흔들고 있는 시점엔 모든 보관하지 않은(unheld) 주사위들이 컵 안에 있습니다.
             if (GAME.rollsLeft === 3 || GAME.isRolling) {
                 unheldInCupCount = GAME.dice.filter(d => !d.held).length;
             }
@@ -557,32 +572,33 @@
             }
         }
 
-        // --- [버그 수정 완료] 홀드 홈 & 게임 필드의 정사각형 5칸 렌더러 ---
+        // --- [주사위 증발 버그 & 정사각형 디자인 완벽 해결] 홀드 홈 및 게임 필드 동기화 ---
         function syncDiceStatus() {
             const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
             const emptyMsg = document.getElementById('field-empty-msg');
 
-            // 1. 홀드 홈 5칸은 항상 완벽한 정사각형(aspect-square) 슬롯으로 유지
+            // 1. 홀드 홈 5칸은 언제나 완벽한 정사각형(aspect-square) 점선 슬롯으로 미리 채웁니다.
             homeContainer.innerHTML = '';
             for (let i = 0; i < 5; i++) {
                 const slot = document.createElement('div');
-                slot.className = "border-2 border-dashed border-slate-800 rounded-lg aspect-square flex items-center justify-center";
+                slot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square flex items-center justify-center bg-black";
                 homeContainer.appendChild(slot);
             }
 
-            // 2. 게임 필드 내부도 5칸의 정사각형 점선 슬롯으로 미리 채워 비주얼 완성
+            // 2. 빨간색 게임 필드도 5개의 정사각형 점선 슬롯으로 채워 늘어짐이나 크기 깨짐을 방지합니다.
             fieldWrapper.innerHTML = '';
             for (let i = 0; i < 5; i++) {
                 const slot = document.createElement('div');
-                slot.className = "border-2 border-dashed border-red-900/40 rounded-lg aspect-square flex items-center justify-center";
+                slot.className = "border-2 border-dashed border-red-900/60 rounded-xl aspect-square flex items-center justify-center bg-red-950/20";
                 fieldWrapper.appendChild(slot);
             }
 
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
 
-            // [절차 1 & 4의 핵심] 컵을 흔들기 전(rollsLeft === 3) 혹은 물리적으로 마구 섞는 중(isRolling === true)에는 필드에 절대 주사위를 그리지 않습니다.
-            const hideFieldDice = (GAME.rollsLeft === 3 || GAME.isRolling);
+            // [핵심 변경] GAME.rollsLeft === 3 일 때도 서버에서 넘어온 주사위 배열값이 있다면 주사위를 그리도록 숨김 플래그 수정!
+            // 컵을 실제로 흔들고 있는 (isRolling === true) 0.4초 동안에만 주사위가 컵으로 쏙 들어갔으므로 필드에서 보이지 않게 처리합니다.
+            const hideFieldDice = GAME.isRolling;
 
             let currentHomeSlotIdx = 0;
             let currentFieldSlotIdx = 0;
@@ -590,7 +606,7 @@
 
             GAME.dice.forEach((die, idx) => {
                 if (die.held) {
-                    // 보관용 홀드 홈의 지정 슬롯을 실제 주사위로 교체
+                    // 보관용 홀드 홈의 지정 슬롯을 실제 주사위 엘리먼트로 교체
                     const slots = homeContainer.children;
                     if (slots[currentHomeSlotIdx]) {
                         const dieDiv = document.createElement('div');
@@ -606,13 +622,13 @@
                         currentHomeSlotIdx++;
                     }
                 } else {
-                    // 게임 필드의 지정 슬롯에 튀어나온 주사위를 순서대로 교체 배치
+                    // 게임 필드의 지정 슬롯에 튕겨 나온 주사위를 순서대로 교체 배치
                     if (!hideFieldDice) {
                         hasFieldDice = true;
                         const slots = fieldWrapper.children;
                         if (slots[currentFieldSlotIdx]) {
                             const dieDiv = document.createElement('div');
-                            // 튕겨 나오는 팝 애니메이션 추가!
+                            // 튕겨나오는 입체 팝업 애니메이션 효과 부여
                             dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200 animate-dice-pop");
                             
                             if (isMyTurn) {
@@ -628,7 +644,7 @@
                 }
             });
 
-            // 안내 문구 제어
+            // 안내 문구 표시 및 제어
             if (hasFieldDice) {
                 emptyMsg.classList.add('hidden');
             } else {
@@ -636,7 +652,7 @@
                 if (GAME.isRolling) {
                     emptyMsg.textContent = "원통 컵에서 주사위를 마구 섞는 중...";
                 } else {
-                    emptyMsg.textContent = "주사위가 컵 안에 있습니다. 컵을 흔들어 첫 롤을 하세요!";
+                    emptyMsg.textContent = "주사위가 컵 안에 있습니다. 컵을 흔들어 롤을 하세요!";
                 }
             }
 
@@ -662,14 +678,14 @@
             if (!isMyTurn) return alert("본인의 차례가 아닙니다!");
             if (GAME.rollsLeft <= 0) return alert("남은 리롤 기회가 없습니다!");
 
-            // [절차 4] 컵을 누르자마자 필드의 모든 주사위가 컵 속으로 들어가는 효과 강제 적용
+            // 컵을 누르자마자 즉시 주사위를 컵 안으로 회수하는 연출 트리거
             GAME.isRolling = true;
             syncDiceStatus(); 
 
             socket.emit('shakeCup');
             setTimeout(() => {
                 socket.emit('rollDice');
-            }, 500); // 0.5초 동안 마구 흔듬
+            }, 500); // 0.5초간 흔들기 유지 후 방출
         }
 
         function triggerEarlyStop() {
@@ -748,7 +764,7 @@
         }
 
         function calculateAllPotentialScores() {
-            if (GAME.rollsLeft === 3 || GAME.isRolling) return;
+            if (GAME.isRolling) return;
 
             const currentActivePlayer = GAME.players[GAME.currentPlayerIdx];
             const values = GAME.dice.map(d => d.value);
