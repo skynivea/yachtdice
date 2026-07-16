@@ -21,16 +21,7 @@
         .rotate-y-180 {
             transform: rotateY(180deg);
         }
-        /* 주사위 눈 배치용 클래스 */
-        .dot {
-            width: 8px;
-            height: 8px;
-            background-color: #1e293b;
-            border-radius: 50%;
-        }
-        .red-dot {
-            background-color: #ef4444;
-        }
+        
         /* 통 흔들기 애니메이션 */
         @keyframes cup-shake {
             0% { transform: translate(4px, 1px) rotate(2deg); }
@@ -46,7 +37,7 @@
             100% { transform: translate(1px, -2px) rotate(0deg); }
         }
         .cup-shaking {
-            animation: cup-shake 0.15s infinite;
+            animation: cup-shake 0.1s infinite;
         }
         /* 파티클 축하 효과 */
         @keyframes particle-fade {
@@ -77,7 +68,7 @@
                 <button onclick="initJoinRoom()" class="py-4 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-xl font-bold text-lg transition-all">방 들어가기</button>
             </div>
 
-            <!-- 방 설정 영역 (방 만들기 클릭 시 활성화) -->
+            <!-- 방 설정 영역 -->
             <div id="room-setup" class="hidden space-y-4">
                 <div class="border-t border-slate-700 pt-4">
                     <label class="block text-sm font-semibold text-slate-400 mb-2">플레이어 이름 입력 (최대 6명)</label>
@@ -90,9 +81,7 @@
                 <!-- 현재 방 인원 리스트 -->
                 <div>
                     <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">현재 참여 멤버 (<span id="player-count">0</span>/6)</h3>
-                    <ul id="player-list" class="space-y-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 max-h-40 overflow-y-auto">
-                        <!-- 추가된 플레이어들 표시 -->
-                    </ul>
+                    <ul id="player-list" class="space-y-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 max-h-40 overflow-y-auto"></ul>
                 </div>
 
                 <button onclick="startGame()" id="start-game-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all shadow-lg" disabled>
@@ -106,41 +95,33 @@
             <h2 class="text-2xl font-black text-slate-200 mb-2">🎲 순서 정하기</h2>
             <p class="text-slate-400 text-sm mb-8">카드를 한 장씩 골라 뒤집어 게임 진행 순서를 정하세요.</p>
             
-            <div id="card-container" class="grid grid-cols-2 md:grid-cols-6 gap-4 justify-center mb-8">
-                <!-- 플레이어 수만큼 카드가 배치됨 -->
-            </div>
+            <div id="card-container" class="grid grid-cols-2 md:grid-cols-6 gap-4 justify-center mb-8"></div>
 
             <button onclick="revealAllCardsAndStart()" id="next-to-game-btn" class="hidden mx-auto py-3 px-8 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-lg transition-all shadow-lg">
                 순서 정렬 후 필드로 이동하기
             </button>
         </section>
 
-        <!-- 3단계: 메인 게임 필드 구조 (게임판 / 통 / 스코어보드 삼분할) -->
+        <!-- 3단계: 메인 게임 필드 구조 -->
         <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center">
             
-            <!-- (좌) 빨간색 게임 필드 및 검은색 홀드 홈 (정사각형 비율 목표) -->
+            <!-- (좌) 빨간색 게임 필드 및 빨간색 홀드 홈 (불투명한 빨간색 영역) -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[320px] max-w-[450px] aspect-square mx-auto lg:mx-0">
                 
-                <!-- 상단: 검은색 홀드 홈 (Hold Home 5개) -->
+                <!-- 상단: 빨간색 홀드 홈 (요청에 따라 불투명한 빨간색으로 수정 및 빈 칸 시각화 삭제) -->
                 <div>
-                    <h3 class="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider text-center">보관용 홀드 홈 (Hold Home)</h3>
-                    <div id="hold-home" class="grid grid-cols-5 gap-2 bg-slate-950 p-4 rounded-xl border border-slate-800 min-h-[84px] items-center justify-items-center">
-                        <!-- 홀드된 주사위가 들어가는 빈 홀더 5개 -->
-                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700" data-index="0">1</div>
-                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700" data-index="1">2</div>
-                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700" data-index="2">3</div>
-                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700" data-index="3">4</div>
-                        <div class="w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700" data-index="4">5</div>
+                    <h3 class="text-xs font-bold text-red-300 mb-2 uppercase tracking-wider text-center">보관용 홀드 홈 (Hold Home)</h3>
+                    <div id="hold-home" class="flex gap-3 justify-center items-center bg-red-700 border-2 border-red-600 p-4 rounded-xl min-h-[84px]">
+                        <!-- 홀드된 주사위들만 동적으로 깔끔하게 나열됨 (미리 생성된 빈 점선 박스 없음) -->
                     </div>
                 </div>
 
-                <!-- 중단: 빨간색 게임 필드 (Roll Field) -->
+                <!-- 중단: 빨간색 게임 필드 (불투명한 빨간색 영역) -->
                 <div class="my-6">
-                    <h3 class="text-xs font-bold text-red-400 mb-2 uppercase tracking-wider text-center">게임 필드 (Roll Field)</h3>
-                    <div id="roll-field" class="bg-red-950/40 border-2 border-red-800/60 rounded-xl p-4 min-h-[140px] flex items-center justify-center gap-4 relative overflow-hidden">
-                        <!-- 컵에서 던져진 주사위들이 물리적으로 떨어지는 공간 -->
-                        <div id="field-empty-msg" class="text-red-400/60 text-sm font-semibold text-center pointer-events-none">주사위 통을 흔들어서 쏟아내세요!</div>
-                        <div id="field-dice-wrapper" class="flex gap-3"></div>
+                    <h3 class="text-xs font-bold text-red-300 mb-2 uppercase tracking-wider text-center">게임 필드 (Roll Field)</h3>
+                    <div id="roll-field" class="bg-red-800 border-2 border-red-700 rounded-xl p-4 min-h-[140px] flex items-center justify-center gap-4 relative overflow-hidden">
+                        <div id="field-empty-msg" class="text-red-200 text-sm font-semibold text-center pointer-events-none">주사위 컵을 드래그하거나 클릭하여 쏟아내세요!</div>
+                        <div id="field-dice-wrapper" class="flex gap-3 flex-wrap justify-center"></div>
                     </div>
                 </div>
 
@@ -159,33 +140,22 @@
             <div class="w-full lg:w-72 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between items-center shadow-xl relative min-h-[350px]">
                 <div class="text-center">
                     <h2 class="text-md font-bold text-slate-300">주사위 컵</h2>
-                    <p class="text-[11px] text-slate-500 mt-1">마우스나 터치로 통을 드래그해 흔들어 떨구세요!</p>
+                    <p class="text-[11px] text-slate-500 mt-1">드래그하여 흔들거나, 가볍게 터치/클릭하세요!</p>
                 </div>
 
                 <!-- 컵 인터랙션 코어 구역 -->
                 <div class="relative flex flex-col items-center justify-center my-auto w-full h-48">
-                    <!-- 약하게 흔들 때 활성화될 인게임 알림 -->
-                    <div id="shake-warning" class="absolute top-0 bg-amber-500 text-slate-900 text-xs font-bold px-3 py-1.5 rounded shadow-md opacity-0 transition-opacity duration-300 pointer-events-none z-40">
-                        ⚠️ 더 격렬하게 흔들어 주사위를 섞으세요!
-                    </div>
-
-                    <!-- 드래그할 컵 몸통 (무광 검정 원통형 디자인) -->
+                    <!-- 드래그/클릭할 컵 몸통 -->
                     <div id="dice-cup" class="w-28 h-36 bg-gradient-to-b from-slate-700 to-slate-950 rounded-b-3xl rounded-t-lg border-t-8 border-slate-600 shadow-2xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75 relative z-10 select-none">
                         <div class="text-center pointer-events-none">
                             <span class="text-sm text-slate-400 font-black tracking-widest block uppercase">CUP</span>
-                            <!-- 통 내부에 든 주사위 개수 시각화 -->
-                            <div class="flex gap-1 justify-center mt-2" id="cup-inside-indicators">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            </div>
+                            <!-- 통 내부에 든 주사위 개수 표시 -->
+                            <div class="flex gap-1 justify-center mt-2" id="cup-inside-indicators"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 이모티콘 소통 바 -->
+                <!-- 이모티콘 소통 바 (어느 플레이어든 누르면 실시간 반응) -->
                 <div class="w-full bg-slate-900/60 p-2.5 rounded-xl border border-slate-700">
                     <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
                     <div class="flex justify-between gap-1">
@@ -204,9 +174,7 @@
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl min-w-[320px] flex flex-col justify-between">
                 <div>
                     <!-- 상단 실시간 플레이어 프로필 썸네일 리스트 -->
-                    <div class="flex items-center gap-2 overflow-x-auto pb-3 border-b border-slate-700 mb-4" id="player-profiles-row">
-                        <!-- 정렬된 플레이어 아바타 카드 렌더링 -->
-                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto pb-3 border-b border-slate-700 mb-4" id="player-profiles-row"></div>
 
                     <div class="flex justify-between items-center mb-3">
                         <h2 class="text-sm font-bold text-slate-300">점수판 (요트 족보)</h2>
@@ -224,9 +192,7 @@
                                     <th class="py-2 px-3 text-right" id="scoreboard-target-header">현재 플레이어</th>
                                 </tr>
                             </thead>
-                            <tbody id="yacht-scoreboard-body" class="divide-y divide-slate-700/40">
-                                <!-- JS 동적 바인딩 -->
-                            </tbody>
+                            <tbody id="yacht-scoreboard-body" class="divide-y divide-slate-700/40"></tbody>
                         </table>
                     </div>
                 </div>
@@ -247,9 +213,7 @@
             <button onclick="toggleGlobalScoreboard()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold">✕</button>
             <h3 class="text-lg font-black text-slate-200 mb-4 text-center">📊 전체 플레이어 전적판</h3>
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse border border-slate-700" id="global-table">
-                    <!-- 헤더 및 바디가 동적으로 채워짐 -->
-                </table>
+                <table class="w-full text-left text-xs border-collapse border border-slate-700" id="global-table"></table>
             </div>
         </div>
     </div>
@@ -273,26 +237,24 @@
 
     <!-- 게임 구동 핵심 스크립트 -->
     <script>
-        // --- 1. 글로벌 게임 데이터 구조 ---
         const GAME = {
-            players: [],          // { id, name, avatar, score: {}, activeTurnIndex: 0 }
-            shuffledOrder: [],    // 순서 정렬된 플레이어 인덱스 목록
-            currentPlayerIdx: 0,  // shuffledOrder를 가리키는 포인터
-            currentRound: 1,      // 1 ~ 12 라운드 진행
+            players: [],          
+            shuffledOrder: [],    
+            currentPlayerIdx: 0,  
+            currentRound: 1,      
             rollsLeft: 3,
             isRolling: false,
             // 주사위 5개 데이터
             dice: [
-                { value: 1, held: false, isFiled: false },
-                { value: 1, held: false, isFiled: false },
-                { value: 1, held: false, isFiled: false },
-                { value: 1, held: false, isFiled: false },
-                { value: 1, held: false, isFiled: false }
+                { id: 1, value: 1, held: false, isFiled: false },
+                { id: 2, value: 1, held: false, isFiled: false },
+                { id: 3, value: 1, held: false, isFiled: false },
+                { id: 4, value: 1, held: false, isFiled: false },
+                { id: 5, value: 1, held: false, isFiled: false }
             ],
             selectedCatToConfirm: null
         };
 
-        // 족보 한글 명칭 스펙 일치화
         const CATEGORIES = [
             { id: 'aces', name: '에이스 (Aces)', desc: '1의 눈 합' },
             { id: 'deuces', name: '듀얼 (Deuces)', desc: '2의 눈 합' },
@@ -308,15 +270,13 @@
             { id: 'yacht', name: '요트 (Yacht)', desc: '동일 눈 5개 (50점)' }
         ];
 
-        // --- 2. 초기 로비 & 대기방 로직 ---
         function initCreateRoom() {
             document.getElementById('lobby-buttons').classList.add('hidden');
             document.getElementById('room-setup').classList.remove('hidden');
         }
 
         function initJoinRoom() {
-            // 다인 플레이 룸 참여는 로컬 멀티플레이어로 가상 시뮬레이션 지원
-            alert("로컬 가상 방 모드로 진입합니다. 친구들의 이름을 입력해 하나의 브라우저에서 턴제 플레이가 가능합니다.");
+            alert("로컬 가상 방 모드로 진입합니다. 친구들의 이름을 입력해 하나의 브라우저에서 멀티플레이가 가능합니다.");
             initCreateRoom();
         }
 
@@ -330,7 +290,7 @@
             }
 
             const newPlayer = {
-                id: Date.now() + Math.random().toString(36).substr(2, 5),
+                id: 'p_' + Date.now() + Math.random().toString(36).substr(2, 5),
                 name: name,
                 avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
                 scores: {
@@ -353,7 +313,7 @@
             listContainer.innerHTML = '';
             GAME.players.forEach((p, idx) => {
                 const li = document.createElement('li');
-                li.className = "flex items-center justify-between py-1.5 px-3 bg-slate-800 rounded border border-slate-700 text-sm";
+                li.className = "flex items-center justify-between py-1.5 px-3 bg-slate-900 rounded border border-slate-700 text-sm";
                 li.innerHTML = `
                     <div class="flex items-center gap-2">
                         <img src="${p.avatar}" class="w-6 h-6 rounded bg-slate-700" />
@@ -379,17 +339,12 @@
             updateLobbyUI();
         }
 
-        // --- 3. 순서 정하기 씬 진입 ---
-        let cardsSelected = 0;
         function startGame() {
             document.getElementById('lobby-screen').classList.add('hidden');
-
             if (GAME.players.length === 1) {
-                // 1인 플레이 시 순서 정하기 스킵 후 즉시 가동
                 GAME.shuffledOrder = [0];
                 setupGamePlay();
             } else {
-                // 다인 플레이 시 무광 블랙 카드 뒤집기 매트 오픈
                 document.getElementById('card-selection-screen').classList.remove('hidden');
                 renderSetupCards();
             }
@@ -398,25 +353,22 @@
         function renderSetupCards() {
             const container = document.getElementById('card-container');
             container.innerHTML = '';
-            cardsSelected = 0;
+            let cardsSelected = 0;
 
-            // 카드 위치 섞기용 값 생성
             const slots = GAME.players.map((_, i) => i);
             const shuffledSlots = [...slots].sort(() => Math.random() - 0.5);
 
             GAME.players.forEach((player, idx) => {
-                const orderNum = shuffledSlots[idx] + 1; // 실제 뒤집었을 때 공개될 순서
+                const orderNum = shuffledSlots[idx] + 1;
 
                 const card = document.createElement('div');
-                card.className = "w-28 h-40 cursor-pointer group dice-container perspective-600";
+                card.className = "w-28 h-40 cursor-pointer group perspective-600";
                 card.innerHTML = `
                     <div class="card-inner relative w-full h-full text-center rounded-xl border border-slate-700 shadow-xl bg-slate-950 transition-all duration-500" data-order="${orderNum}" data-player-idx="${idx}">
-                        <!-- 카드 뒷면 (무광 블랙 디자인) -->
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-slate-950 flex flex-col items-center justify-center backface-hidden p-2">
                             <span class="text-slate-600 text-4xl mb-2">♠</span>
-                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">TAP TO REVEAL</span>
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">클릭하여 뒤집기</span>
                         </div>
-                        <!-- 카드 앞면 (결과 순서) -->
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-slate-900 border-2 border-emerald-500 flex flex-col items-center justify-center rotate-y-180 backface-hidden p-2">
                             <img src="${player.avatar}" class="w-10 h-10 rounded-full bg-slate-800 mb-1" />
                             <span class="text-xs font-bold text-slate-300 truncate max-w-full">${player.name}</span>
@@ -442,7 +394,6 @@
         }
 
         function revealAllCardsAndStart() {
-            // 카드들의 정보 수집하여 정렬된 순서 리스트 생성
             const cardInners = document.querySelectorAll('.card-inner');
             const results = [];
             cardInners.forEach(el => {
@@ -452,7 +403,6 @@
                 });
             });
 
-            // 오름차순(1등부터 순서대로) 정렬
             results.sort((a, b) => a.order - b.order);
             GAME.shuffledOrder = results.map(r => r.playerIdx);
             GAME.currentPlayerIdx = 0;
@@ -461,7 +411,6 @@
             setupGamePlay();
         }
 
-        // --- 4. 메인 플레이 셋업 ---
         function setupGamePlay() {
             document.getElementById('game-screen').classList.remove('hidden');
             initTurn();
@@ -471,7 +420,6 @@
             GAME.rollsLeft = 3;
             GAME.isRolling = false;
             
-            // 주사위 상태 초기화: 전부 컵 속에 들어가 있고 미오픈 상태
             GAME.dice.forEach(d => {
                 d.held = false;
                 d.isFiled = false;
@@ -487,7 +435,6 @@
             updateCupInsideIndicators();
         }
 
-        // --- 플레이어 프로필 렌더링 ---
         function renderPlayerProfiles() {
             const container = document.getElementById('player-profiles-row');
             container.innerHTML = '';
@@ -500,11 +447,8 @@
                 avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[70px] relative transition-all duration-300
                     ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md shadow-emerald-950' : 'bg-slate-900 border-slate-800 opacity-60'}`;
                 
-                // 감정 표현용 말풍선 배치 컨테이너 포함
                 avatarEl.innerHTML = `
-                    <div id="emoji-bubble-${p.id}" class="absolute -top-10 bg-white text-slate-900 text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50">
-                        <!-- 이모티콘 팝업 -->
-                    </div>
+                    <div id="emoji-bubble-${p.id}" class="absolute -top-10 bg-white text-slate-900 text-xs font-bold py-1 px-2 rounded shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
                     <img src="${p.avatar}" class="w-10 h-10 rounded-full bg-slate-800" />
                     <span class="text-[10px] font-bold mt-1 text-slate-300 truncate max-w-[60px]">${p.name}</span>
                 `;
@@ -512,8 +456,9 @@
             });
         }
 
-        // --- 실시간 이모티콘 표출 시스템 ---
+        // --- 이모티콘 바 작동 개선: 전원 즉각 팝업 노출 ---
         function triggerEmoji(emoji) {
+            // 현재 활성화된 플레이어의 돔을 가져와 바로 표현
             const curPlayerIdx = GAME.shuffledOrder[GAME.currentPlayerIdx];
             const p = GAME.players[curPlayerIdx];
             const bubble = document.getElementById(`emoji-bubble-${p.id}`);
@@ -524,15 +469,13 @@
             
             setTimeout(() => {
                 bubble.style.opacity = '0';
-            }, 2500);
+            }, 2000);
         }
 
-        // --- 주사위 컵 인디케이터 관리 (흔들 준비 여부 시뮬레이션) ---
         function updateCupInsideIndicators() {
             const container = document.getElementById('cup-inside-indicators');
             container.innerHTML = '';
             
-            // 보관홈에 킵되지 않고 던져져야 할 컵 내부 잔여 개수 계산
             const unheldCount = GAME.dice.filter(d => !d.held).length;
             for (let i = 0; i < unheldCount; i++) {
                 const indicator = document.createElement('span');
@@ -541,7 +484,7 @@
             }
         }
 
-        // --- 고성능 정밀 SVG 주사위 그래픽 드로잉 함수 ---
+        // SVG 주사위 눈 정밀 렌더링
         function generateDiceHTML(value, colorClass = "bg-white") {
             const dotsLayout = {
                 1: [[50, 50]],
@@ -555,13 +498,13 @@
             const dots = dotsLayout[value] || [];
             let dotsSvg = '';
             dots.forEach(([cx, cy]) => {
-                const color = (value === 1) ? '#ef4444' : '#1e293b'; // 1의 눈만 강렬한 빨간색 점
-                const r = (value === 1) ? 10 : 8; // 1의 눈 중심점 크기 키움
+                const color = (value === 1) ? '#ef4444' : '#1e293b';
+                const r = (value === 1) ? 10 : 8;
                 dotsSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
             });
 
             return `
-                <div class="w-14 h-14 ${colorClass} rounded-xl shadow-lg border border-slate-300 flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-transform">
+                <div class="w-12 h-12 ${colorClass} rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-transform">
                     <svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
                         ${dotsSvg}
                     </svg>
@@ -569,34 +512,37 @@
             `;
         }
 
-        // --- 5. 검은색 홀드 홈 (Hold Home) 및 빨간색 게임 필드 렌더링 ---
+        // --- 홀드 홈 (Hold Home) 업데이트 ---
         function renderHoldHome() {
-            const containers = document.querySelectorAll('#hold-home > div');
-            containers.forEach((slot, index) => {
-                const die = GAME.dice[index];
-                slot.innerHTML = '';
-                
-                // 점선 기본 번호 표시 복원
-                slot.textContent = (index + 1).toString();
-                slot.className = "w-12 h-12 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center text-slate-700 font-bold";
+            const container = document.getElementById('hold-home');
+            container.innerHTML = ''; // 빈 상자 칸 표시 일절 제거
 
-                if (die.held) {
-                    slot.innerHTML = generateDiceHTML(die.value, "bg-slate-100");
-                    slot.className = "w-12 h-12 flex items-center justify-center rounded-lg";
+            const heldDice = GAME.dice.filter(d => d.held);
+
+            if (heldDice.length === 0) {
+                container.innerHTML = `<span class="text-red-200 text-xs font-semibold">보관된 주사위가 없습니다.</span>`;
+            } else {
+                heldDice.forEach(die => {
+                    const dieDiv = document.createElement('div');
+                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-slate-100 border-slate-300");
                     
-                    // 홀드 홈 클릭 시 릴리즈 (필드로 복귀)
-                    slot.firstChild.addEventListener('click', () => {
+                    // 홈에 있는 주사위 클릭 시 -> 필드로 다시 복귀
+                    dieDiv.firstChild.addEventListener('click', () => {
                         if (GAME.isRolling) return;
                         die.held = false;
                         die.isFiled = true;
                         renderHoldHome();
                         renderRollField();
                         updateCupInsideIndicators();
+                        calculateAllPotentialScores();
                     });
-                }
-            });
+
+                    container.appendChild(dieDiv.firstChild);
+                });
+            }
         }
 
+        // --- 게임 필드 (Roll Field) 업데이트 ---
         function renderRollField() {
             const fieldWrapper = document.getElementById('field-dice-wrapper');
             const emptyMsg = document.getElementById('field-empty-msg');
@@ -608,119 +554,86 @@
                 emptyMsg.classList.remove('hidden');
             } else {
                 emptyMsg.classList.add('hidden');
-            }
-
-            GAME.dice.forEach((die, index) => {
-                if (!die.held && die.isFiled) {
-                    const container = document.createElement('div');
-                    container.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
+                activeFieldDice.forEach(die => {
+                    const dieDiv = document.createElement('div');
+                    dieDiv.innerHTML = generateDiceHTML(die.value, "bg-white hover:bg-slate-50 border-slate-200");
                     
-                    // 주사위 클릭 시 홀드로 밀어올리기
-                    container.firstChild.addEventListener('click', () => {
+                    // 필드에 있는 주사위 클릭 시 -> 보관용 홀드 홈(Hold Home)으로 이동 (킵 기능)
+                    dieDiv.firstChild.addEventListener('click', () => {
                         if (GAME.isRolling) return;
                         die.held = true;
                         die.isFiled = false;
                         renderHoldHome();
                         renderRollField();
                         updateCupInsideIndicators();
+                        calculateAllPotentialScores();
                     });
 
-                    fieldWrapper.appendChild(container.firstChild);
-                }
-            });
+                    fieldWrapper.appendChild(dieDiv.firstChild);
+                });
+            }
         }
 
-        // --- 6. 컵 드래그 앤 드롭 물리 엔진 시뮬레이션 ---
+        // --- 컵 클릭 및 드래그 제어 정밀화 ---
         const cupEl = document.getElementById('dice-cup');
-        let dragActive = false;
-        let startX = 0, startY = 0;
-        let lastX = 0, lastY = 0;
-        let totalPathDist = 0;
-        let dragTimer = 0;
+        let isDragging = false;
+        let shakeCounter = 0;
 
-        cupEl.addEventListener('mousedown', startDrag);
-        window.addEventListener('mousemove', moveDrag);
-        window.addEventListener('mouseup', endDrag);
-
-        cupEl.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
-        window.addEventListener('touchmove', (e) => moveDrag(e.touches[0]), { passive: true });
-        window.addEventListener('touchend', endDrag);
-
-        function startDrag(e) {
+        // 마우스 클릭 시 가볍게 작동 보장
+        cupEl.addEventListener('click', () => {
             if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
-            dragActive = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            lastX = e.clientX;
-            lastY = e.clientY;
-            totalPathDist = 0;
-            dragTimer = Date.now();
-            
-            cupEl.style.transition = 'none';
-        }
+            triggerCupShakeEffect();
+        });
 
-        function moveDrag(e) {
-            if (!dragActive) return;
-            const currentX = e.clientX;
-            const currentY = e.clientY;
+        // 드래그앤드롭 이벤트 바인딩
+        cupEl.addEventListener('mousedown', (e) => {
+            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
+            isDragging = true;
+            shakeCounter = 0;
+            cupEl.classList.add('cup-shaking');
+        });
 
-            // 흔들림 물리 벡터 연산
-            const dx = currentX - lastX;
-            const dy = currentY - lastY;
-            totalPathDist += Math.sqrt(dx * dx + dy * dy);
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            shakeCounter++;
+        });
 
-            // 주사위 달가락 소리 및 비주얼 피드백용 컵 위치 한정 이동
-            const limitedX = Math.max(-60, Math.min(60, currentX - startX));
-            const limitedY = Math.max(-40, Math.min(40, currentY - startY));
-            cupEl.style.transform = `translate(${limitedX}px, ${limitedY}px) rotate(${limitedX * 0.3}deg)`;
-
-            // 세게 흔들 때 컵 바이브레이션 효과 추가
-            if (totalPathDist > 100) {
-                cupEl.classList.add('cup-shaking');
-            }
-
-            lastX = currentX;
-            lastY = currentY;
-        }
-
-        function endDrag() {
-            if (!dragActive) return;
-            dragActive = false;
-
+        window.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
             cupEl.classList.remove('cup-shaking');
-            cupEl.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-            cupEl.style.transform = 'translate(0px, 0px) rotate(0deg)';
+            
+            // 살짝이라도 드래그가 이루어졌거나 클릭했다면 주사위 투하
+            triggerCupShakeEffect();
+        });
 
-            const elapsed = Date.now() - dragTimer;
-
-            // 흔들기 판정 강도 검증 (완화하여 안정성 최적화)
-            if (totalPathDist > 150 && elapsed > 150) {
-                rollSequence();
-            } else {
-                showToastWarning();
-            }
-        }
-
-        let toastTimeout;
-        function showToastWarning() {
-            const toast = document.getElementById('shake-warning');
-            toast.style.opacity = '1';
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.style.opacity = '0';
-            }, 1500);
-        }
-
-        // --- 7. 주사위 쏟아내기 액션 룰 ---
-        function rollSequence() {
+        // 모바일 터치 대응
+        cupEl.addEventListener('touchstart', () => {
             if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
+            isDragging = true;
+            cupEl.classList.add('cup-shaking');
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            cupEl.classList.remove('cup-shaking');
+            triggerCupShakeEffect();
+        });
+
+        function triggerCupShakeEffect() {
+            if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
+            rollSequence();
+        }
+
+        // --- 주사위 쏟아내기 코어 시퀀스 ---
+        function rollSequence() {
             GAME.isRolling = true;
             GAME.rollsLeft--;
 
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = false;
 
-            // 컵 격하게 털어 넣는 시각 연출
             cupEl.classList.add('cup-shaking');
 
             let steps = 0;
@@ -728,13 +641,13 @@
                 GAME.dice.forEach(d => {
                     if (!d.held) {
                         d.value = Math.floor(Math.random() * 6) + 1;
-                        d.isFiled = true; // 통에서 필드로 떨어짐 처리
+                        d.isFiled = true; 
                     }
                 });
                 renderRollField();
                 steps++;
 
-                if (steps > 10) {
+                if (steps > 12) {
                     clearInterval(rollInterval);
                     cupEl.classList.remove('cup-shaking');
                     GAME.isRolling = false;
@@ -742,23 +655,18 @@
                     updateCupInsideIndicators();
                     renderRollField();
                     calculateAllPotentialScores();
-
-                    // 자동 라운드 완성 혹은 폭죽 이펙트 체크
                     triggerDopamineEffects();
                 }
-            }, 100);
+            }, 80);
         }
 
-        // --- '리롤 그만하고 족보 결정하기' 구현 ---
         function triggerEarlyStop() {
             if (GAME.rollsLeft <= 0 || GAME.isRolling) return;
             
-            // 남은 리롤 횟수 강제 0으로 조기 종료
             GAME.rollsLeft = 0;
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = true;
 
-            // 필드의 주사위들이 검은색 홀드 홈으로 빨려들어가며 수렴하는 연출
             GAME.dice.forEach(d => {
                 if (d.isFiled) {
                     d.held = true;
@@ -772,7 +680,7 @@
             calculateAllPotentialScores();
         }
 
-        // --- 8. 족보 점수 정량 계산식 ---
+        // 족보 점수 연산
         function getComputedScore(catId, values) {
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
@@ -806,7 +714,6 @@
             }
         }
 
-        // --- 9. 스코어보드 관리 & 유효성 체크 ---
         function renderScoreboard() {
             const body = document.getElementById('yacht-scoreboard-body');
             body.innerHTML = '';
@@ -843,7 +750,6 @@
         }
 
         function calculateAllPotentialScores() {
-            // 한 번이라도 통을 흔들지 않은 상태면 보드 점수 미리보기 비활성화
             if (GAME.rollsLeft === 3) return;
 
             const currentActivePlayer = GAME.players[GAME.shuffledOrder[GAME.currentPlayerIdx]];
@@ -860,11 +766,9 @@
             });
         }
 
-        // --- 점수 기입 확정 및 확인 팝업 모달 작동 ---
         function triggerSelectCategory(catId) {
-            // 주사위를 1회 이상 굴려야 기록 가능
             if (GAME.rollsLeft === 3) {
-                alert("한 번이라도 주사위 컵을 흔들어 주사위를 쏟아낸 후 기입이 가능합니다.");
+                alert("주사위를 한 번 이상 굴려야 기록할 수 있습니다!");
                 return;
             }
             if (GAME.isRolling) return;
@@ -903,21 +807,17 @@
             document.getElementById('score-confirm-modal').classList.add('hidden');
             GAME.selectedCatToConfirm = null;
 
-            // 다음 플레이어 혹은 다음 라운드 진행
             proceedToNextTurn();
         });
 
-        // --- 10. 실시간 턴 진행 및 완주 시스템 ---
         function proceedToNextTurn() {
             GAME.currentPlayerIdx++;
             
-            // 모든 플레이어가 한 라운드씩 턴을 돌았을 때
             if (GAME.currentPlayerIdx >= GAME.shuffledOrder.length) {
                 GAME.currentPlayerIdx = 0;
                 GAME.currentRound++;
             }
 
-            // 모든 칸을 기입하여 최종 12라운드가 끝났을 때
             if (GAME.currentRound > 12) {
                 declareGameOverAndRank();
                 return;
@@ -926,7 +826,6 @@
             initTurn();
         }
 
-        // --- 플레이어 종합 성적 통계 ---
         function updatePlayerSummaryStats(player) {
             const subtotalKeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
             let subtotal = 0;
@@ -953,19 +852,16 @@
             document.getElementById('current-total-score').textContent = total;
         }
 
-        // --- 11. 도파민 대형 이펙트 기능 ---
         function triggerDopamineEffects() {
             const values = GAME.dice.map(d => d.value);
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
 
-            // 1. 요트(Yacht, 동일 눈 5개) 달성 시: 화면에 대형 폭죽 연출
             if (counts.includes(5)) {
                 spawnFireworksCelebration("🔥 YACHT (요트) 달성! 50점 🎉");
                 return;
             }
 
-            // 2. 고득점 풀하우스 (66655, 66555 등 6과 5 중심의 27점 이상 조합)
             const isFullHouse = counts.includes(3) && counts.includes(2);
             if (isFullHouse) {
                 const totalSum = values.reduce((a, b) => a + b, 0);
@@ -975,30 +871,25 @@
                 }
             }
 
-            // 3. 상단 보너스 63점 근접을 지원하는 "식스" 4개 이상 축하
             if (counts[6] >= 4) {
                 spawnFireworksCelebration("🌟 식스 쿼드 달성! 보너스 찬스! 🌟");
             }
         }
 
         function spawnFireworksCelebration(messageText) {
-            // 알림 메시지 배너 생성
             const banner = document.createElement('div');
             banner.className = "fixed inset-0 flex flex-col items-center justify-center bg-black/60 pointer-events-none z-50 transition-opacity duration-500";
             banner.innerHTML = `
                 <div class="text-center scale-90 animate-bounce">
                     <h2 class="text-4xl font-extrabold text-amber-400 drop-shadow-lg uppercase tracking-wider">${messageText}</h2>
-                    <p class="text-emerald-400 font-bold mt-2 text-sm">놀라운 전술이군요!</p>
                 </div>
             `;
             document.body.appendChild(banner);
 
-            // 파티클 스파클 생성
             for (let i = 0; i < 40; i++) {
                 const p = document.createElement('div');
                 p.className = "fixed w-3.5 h-3.5 rounded-full bg-emerald-400 z-50 pointer-events-none celebration-particle";
                 
-                // 가상 폭발 사방 전사 방향 벡터 난수 생성
                 const xDist = (Math.random() - 0.5) * 400;
                 const yDist = (Math.random() - 0.5) * 400;
                 
@@ -1015,10 +906,9 @@
             setTimeout(() => {
                 banner.style.opacity = '0';
                 setTimeout(() => banner.remove(), 500);
-            }, 2500);
+            }, 2000);
         }
 
-        // --- 12. 스코어보드 확인하기 모달 구현 ---
         function toggleGlobalScoreboard() {
             const modal = document.getElementById('global-scoreboard-modal');
             if (modal.classList.contains('hidden')) {
@@ -1033,7 +923,6 @@
             const table = document.getElementById('global-table');
             table.innerHTML = '';
 
-            // 1. 헤더 생성
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             headerRow.className = "bg-slate-900 border-b border-slate-700 text-slate-400";
@@ -1046,7 +935,6 @@
             thead.appendChild(headerRow);
             table.appendChild(thead);
 
-            // 2. 바디 데이터 바인딩
             const tbody = document.createElement('tbody');
             tbody.className = "divide-y divide-slate-700";
 
@@ -1063,7 +951,6 @@
                 tbody.appendChild(tr);
             });
 
-            // 3. 마지막 합산 성적 요약 행 추가
             const totalTr = document.createElement('tr');
             totalTr.className = "bg-slate-950 font-bold border-t border-slate-600";
             totalTr.innerHTML = `<td class="py-2 px-3 text-emerald-400 border-r border-slate-700">총합 누계</td>`;
@@ -1080,13 +967,10 @@
                 totalTr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-emerald-400 font-black">${tot}점</td>`;
             });
             tbody.appendChild(totalTr);
-
             table.appendChild(tbody);
         }
 
-        // --- 13. 게임 종료 및 최종 순위 발표 ---
         function declareGameOverAndRank() {
-            // 플레이어별 최종 합산 스코어 환산
             const rankingList = GAME.players.map(p => {
                 const keys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
                 let subt = 0;
@@ -1098,7 +982,6 @@
                 return { name: p.name, total: tot };
             });
 
-            // 순위 정렬
             rankingList.sort((a, b) => b.total - a.total);
 
             let resultMessage = "🎮 게임 종료! 전적 순위표:\n\n";
@@ -1107,10 +990,9 @@
             });
 
             alert(resultMessage);
-            window.location.reload(); // 새로고침 초기화
+            window.location.reload();
         }
 
-        // --- 즉시 가동 대기실 업뎃 ---
         updateLobbyUI();
     </script>
 </body>
