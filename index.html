@@ -20,51 +20,46 @@
         .rotate-y-180 {
             transform: rotateY(180deg);
         }
-        
-        /* 컵 물리 흔들기 연출 */
         @keyframes cup-shake {
-            0% { transform: translate(8px, 4px) rotate(8deg); }
-            20% { transform: translate(-7px, -5px) rotate(-8deg); }
-            40% { transform: translate(-10px, 3px) rotate(8deg); }
-            60% { transform: translate(4px, 6px) rotate(-4deg); }
-            80% { transform: translate(-5px, -3px) rotate(6deg); }
-            100% { transform: translate(4px, -4px) rotate(0deg); }
+            0% { transform: translate(6px, 3px) rotate(5deg); }
+            20% { transform: translate(-5px, -4px) rotate(-6deg); }
+            40% { transform: translate(-8px, 2px) rotate(6deg); }
+            60% { transform: translate(2px, 5px) rotate(-2deg); }
+            80% { transform: translate(-4px, -2px) rotate(5deg); }
+            100% { transform: translate(3px, -3px) rotate(0deg); }
         }
         .cup-shaking {
-            animation: cup-shake 0.07s infinite !important;
+            animation: cup-shake 0.08s infinite !important;
         }
-
-        /* 컵에서 주사위 쏟아질 때 회전 팝 */
         @keyframes dice-roll-pop {
             0% { transform: scale(0) rotate(-180deg); opacity: 0; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
         .animate-dice-roll {
-            animation: dice-roll-pop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            animation: dice-roll-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
-
-        /* 정적 고정 주사위 팝 */
         @keyframes dice-static-pop {
-            0% { transform: scale(0.88); opacity: 0.6; }
+            0% { transform: scale(0.85); opacity: 0.5; }
             100% { transform: scale(1); opacity: 1; }
         }
         .animate-dice-static {
-            animation: dice-static-pop 0.12s ease-out forwards;
+            animation: dice-static-pop 0.15s ease-out forwards;
         }
-
-        /* 빨려들어가는 연출 */
         .animate-suck-in {
-            transition: all 0.25s ease-in-out;
-            transform: translateY(-100px) scale(0.2);
+            transition: all 0.3s ease-in-out;
+            transform: translateY(-120px) scale(0.3);
             opacity: 0;
         }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans select-none">
 
-    <header class="py-4 bg-slate-950 text-center border-b border-slate-800 shadow-md">
+    <header class="py-4 bg-slate-950 text-center border-b border-slate-800 shadow-md relative">
         <h1 class="text-2xl font-black text-slate-200 tracking-widest">🎲 PREMIUM YACHT DICE</h1>
-        <div id="room-info-display" class="text-xs text-emerald-400 font-bold mt-1 hidden">방 코드: <span id="display-room-code">-</span></div>
+        <div id="room-info-display" class="text-xs text-emerald-400 font-bold mt-1 hidden flex justify-center items-center gap-4">
+            <span>방 코드: <span id="display-room-code">-</span></span>
+            <button onclick="leaveGame()" class="px-2 py-0.5 bg-gradient-to-r from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 rounded text-[10px] text-white font-extrabold shadow transition-all">게임 나가기</button>
+        </div>
     </header>
 
     <main class="flex-grow flex items-center justify-center p-4 relative overflow-hidden">
@@ -102,126 +97,126 @@
         </section>
 
         <!-- 인게임 화면 -->
-        <section id="game-screen" class="hidden w-full max-w-7xl flex flex-col lg:flex-row gap-6 items-stretch justify-center relative">
+        <section id="game-screen" class="hidden w-full max-w-[95%] xl:max-w-7xl flex flex-col lg:flex-row gap-4 xl:gap-6 items-stretch justify-center relative">
             
-            <!-- (좌측): 보판 레이아웃 -->
-            <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl min-w-[340px] max-w-[460px] mx-auto lg:mx-0 relative z-10">
-                <!-- 홀드 홈 -->
+            <!-- (좌측): 보관용 및 메인 게임 필드 -->
+            <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-w-[320px] max-w-[420px] mx-auto lg:mx-0 relative z-10">
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">보관용 홀드 홈</h3>
                     <div id="hold-home" class="grid grid-cols-5 gap-3 bg-black border-2 border-slate-900 p-3 rounded-xl"></div>
                 </div>
 
-                <!-- 게임 필드 -->
-                <div class="my-6 flex flex-col items-center">
+                <div class="my-4 flex flex-col items-center">
                     <h3 class="text-xs font-bold text-red-300 mb-3 uppercase tracking-wider text-center">게임 필드</h3>
-                    <div id="roll-field" onclick="openMobileCup()" class="w-full aspect-square max-w-[340px] mx-auto bg-red-950/90 border-2 border-red-800 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden cursor-pointer">
+                    <div id="roll-field" class="w-full aspect-square max-w-[300px] mx-auto bg-red-950/90 border-2 border-red-800 rounded-2xl p-6 flex flex-col justify-center items-center relative overflow-hidden">
                         <div id="field-empty-msg" class="text-red-300 text-xs font-semibold text-center pointer-events-none absolute z-10 px-4">
-                            주사위가 컵 안에 있습니다. 컵을 마우스나 손가락으로 흔들어주세요!
+                            주사위가 컵 안에 있습니다. 섞기 버튼이나 컵을 흔들어 섞으세요!
                         </div>
                         <div id="field-dice-wrapper" class="grid grid-cols-3 gap-4 w-full relative z-20"></div>
                     </div>
                 </div>
 
-                <!-- 데스크톱용 하단 안내바 -->
                 <div class="hidden lg:flex items-center justify-between gap-4 border-t border-slate-700/50 pt-4">
-                    <div class="text-sm font-bold">남은 리롤: <span id="game-rolls-left" class="text-emerald-400 text-lg">3</span>회</div>
-                    <button onclick="triggerEarlyStop()" id="early-stop-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-300 border border-slate-600 transition-all disabled:opacity-50" disabled>리롤 그만하고 족보 결정</button>
+                    <div class="text-xs font-bold">남은 리롤: <span id="game-rolls-left" class="text-emerald-400 text-base">3</span>회</div>
+                    <button onclick="triggerEarlyStop()" id="early-stop-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-[11px] font-bold text-slate-300 border border-slate-600 transition-all disabled:opacity-50" disabled>리롤 중지/기입</button>
                 </div>
 
-                <!-- 모바일 전용 제어 패널 -->
-                <div class="grid grid-cols-2 gap-3 mt-4 lg:hidden w-full max-w-[340px] mx-auto">
-                    <button id="mobile-score-btn" onclick="openMobileScoreboard()" class="py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-xs text-slate-200 border border-slate-600 flex items-center justify-center gap-2 transition-all">
-                        <span>📊 점수판 보이기</span>
+                <!-- 모바일 전용 4열 격자 제어 패널 -->
+                <div class="grid grid-cols-4 gap-2 mt-4 lg:hidden w-full max-w-[340px] mx-auto">
+                    <button id="mobile-shake-btn" onclick="openMobileCup()" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-bold text-[11px] text-white flex flex-col items-center justify-center gap-1 transition-all">
+                        <span>🎲</span><span>섞기</span>
                     </button>
-                    <button id="mobile-stop-btn" onclick="triggerEarlyStop()" class="py-3 bg-red-950 hover:bg-red-900 border border-red-800 disabled:opacity-50 rounded-xl font-bold text-xs text-red-200 flex items-center justify-center gap-2 transition-all" disabled>
-                        <span>⏹️ 리롤 중지/확정</span>
+                    <button id="mobile-score-btn" onclick="openMobileScoreboard()" class="py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-[11px] text-slate-200 border border-slate-600 flex flex-col items-center justify-center gap-1 transition-all">
+                        <span>📊</span><span>점수판</span>
+                    </button>
+                    <button id="mobile-chat-btn" onclick="openMobileChat()" class="py-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-[11px] text-slate-200 border border-slate-600 flex flex-col items-center justify-center gap-1 transition-all">
+                        <span>💬</span><span>채팅</span>
+                    </button>
+                    <button id="mobile-stop-btn" onclick="triggerEarlyStop()" class="py-2.5 bg-red-950 hover:bg-red-900 border border-red-800 rounded-xl font-bold text-[11px] text-red-200 flex flex-col items-center justify-center gap-1 transition-all" disabled>
+                        <span>⏹️</span><span>확정</span>
                     </button>
                 </div>
             </div>
 
-            <!-- (중앙): 주사위 컵 작동부 -->
-            <div id="cup-section" class="fixed inset-0 bg-black/85 z-40 hidden flex-col items-center justify-center p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-72 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-6 lg:justify-between lg:shadow-xl min-h-[380px]">
-                
+            <!-- (중앙): 주사위 작동부 -->
+            <div id="cup-section" class="fixed inset-0 bg-black/85 z-40 hidden flex-col items-center justify-center p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-64 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-4 lg:justify-between lg:shadow-xl min-h-[360px]">
                 <button onclick="closeMobileCup()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
-
-                <div class="text-center w-full">
-                    <h2 class="text-lg font-bold text-slate-200" id="turn-indicator-title">주사위 컵</h2>
-                    <p class="text-xs text-emerald-400 font-semibold mt-1" id="turn-indicator-sub">컵을 잡고 흔들거나 툭 터치하세요!</p>
+                <div class="text-center">
+                    <h2 class="text-sm font-bold text-slate-200">주사위 굴리기</h2>
+                    <p class="text-[10px] text-slate-400 mt-0.5">드래그해서 강하게 흔드세요!</p>
                 </div>
-
-                <!-- 컵 메인 드래그/흔들기 구역 -->
                 <div class="relative flex flex-col items-center justify-center my-auto w-full h-48" id="cup-drag-zone">
-                    <div id="dice-cup" class="w-32 h-40 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:scale-105 transition-transform duration-75 relative z-10 select-none">
-                        <div class="text-xs text-zinc-500 font-black mb-2">SHAKE ME!</div>
-                        <div class="flex gap-1.5 justify-center" id="cup-inside-indicators"></div>
+                    <div id="dice-cup" class="w-24 h-32 bg-gradient-to-b from-zinc-800 to-zinc-950 rounded-b-3xl rounded-t-lg border-t-8 border-zinc-700 shadow-2xl flex flex-col items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all duration-75 relative z-10 select-none">
+                        <div class="flex gap-1 justify-center mt-2 pointer-events-none" id="cup-inside-indicators"></div>
                     </div>
                 </div>
-
-                <!-- 이모티콘 바 -->
-                <div class="w-full max-w-[340px] mx-auto bg-slate-900/60 p-3 rounded-xl">
-                    <div class="text-[10px] text-slate-500 text-center mb-1.5 font-bold tracking-wider">이모티콘 반응</div>
-                    <div class="flex justify-center gap-3 w-full">
-                        <button onclick="triggerEmoji('😭')" class="hover:scale-125 transition-transform text-xl p-0.5">😭</button>
-                        <button onclick="triggerEmoji('😒')" class="hover:scale-125 transition-transform text-xl p-0.5">😒</button>
-                        <button onclick="triggerEmoji('🥰')" class="hover:scale-125 transition-transform text-xl p-0.5">🥰</button>
-                        <button onclick="triggerEmoji('🤣')" class="hover:scale-125 transition-transform text-xl p-0.5">🤣</button>
-                        <button onclick="triggerEmoji('💡')" class="hover:scale-125 transition-transform text-xl p-0.5">💡</button>
-                        <button onclick="triggerEmoji('🙅‍♀️')" class="hover:scale-125 transition-transform text-xl p-0.5">🙅‍♀️</button>
-                        <button onclick="triggerEmoji('🍀')" class="hover:scale-125 transition-transform text-xl p-0.5">🍀</button>
+                <div class="w-full bg-slate-900/60 p-2 rounded-xl">
+                    <div class="flex justify-center gap-2 w-full">
+                        <button onclick="triggerEmoji('😭')" class="hover:scale-125 transition-transform text-lg p-0.5">😭</button>
+                        <button onclick="triggerEmoji('😒')" class="hover:scale-125 transition-transform text-lg p-0.5">😒</button>
+                        <button onclick="triggerEmoji('🥰')" class="hover:scale-125 transition-transform text-lg p-0.5">🥰</button>
+                        <button onclick="triggerEmoji('🤣')" class="hover:scale-125 transition-transform text-lg p-0.5">🤣</button>
+                        <button onclick="triggerEmoji('🙅‍♀️')" class="hover:scale-125 transition-transform text-lg p-0.5">🙅‍♀️</button>
+                        <button onclick="triggerEmoji('🍀')" class="hover:scale-125 transition-transform text-lg p-0.5">🍀</button>
                     </div>
                 </div>
             </div>
 
             <!-- (우측): 스코어보드 영역 -->
-            <div id="scoreboard-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:flex-1 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-5 lg:shadow-xl min-w-[340px] max-w-[460px] mx-auto lg:mx-0">
-                
+            <div id="scoreboard-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-80 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-4 lg:shadow-xl">
                 <button onclick="closeMobileScoreboard()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
-
                 <div>
-                    <div class="flex items-center gap-3 pb-5 border-b border-slate-700 mb-4 relative pt-10" id="player-profiles-row"></div>
-                    
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-sm font-bold text-slate-300">점수판 (요트 족보)</h2>
-                        <button onclick="toggleGlobalScoreboard()" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-xs text-slate-300 transition-all">전체 스코어보드</button>
+                    <div class="flex items-center gap-2 pb-3 border-b border-slate-700 mb-3 relative pt-8 lg:pt-2 overflow-x-auto" id="player-profiles-row"></div>
+                    <div class="flex justify-between items-center mb-2.5">
+                        <h2 class="text-xs font-bold text-slate-300">점수판 (요트 족보)</h2>
+                        <div class="text-[10px] font-black text-rose-400 bg-rose-950/50 border border-rose-900 px-1.5 py-0.5 rounded animate-pulse">⏱️ <span id="turn-timer-display">60</span>초</div>
+                        <button onclick="toggleGlobalScoreboard()" class="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded text-[10px] text-slate-300 transition-all">전체보기</button>
                     </div>
-                    <div class="overflow-y-auto max-h-[340px] border border-slate-700 rounded-lg">
-                        <table class="w-full text-left text-xs border-collapse">
+                    <div class="overflow-y-auto max-h-[260px] border border-slate-700 rounded-lg">
+                        <table class="w-full text-left text-[11px] border-collapse">
                             <thead>
                                 <tr class="bg-slate-900 border-b border-slate-700 text-slate-400 font-bold">
-                                    <th class="py-2 px-3">족보 이름</th>
-                                    <th class="py-2 px-3 text-center">조건</th>
-                                    <th class="py-2 px-3 text-right" id="scoreboard-target-header">현재 플레이어</th>
+                                    <th class="py-1.5 px-2">족보 이름</th>
+                                    <th class="py-1.5 px-2 text-right" id="scoreboard-target-header">현재 플레이어</th>
                                 </tr>
                             </thead>
                             <tbody id="yacht-scoreboard-body" class="divide-y divide-slate-700/40"></tbody>
                         </table>
                     </div>
                 </div>
-                <div class="mt-4 pt-3 border-t border-slate-700 flex flex-col gap-1 text-xs font-bold text-slate-300">
+                <div class="mt-3 pt-2 border-t border-slate-700 flex flex-col gap-0.5 text-[11px] font-bold text-slate-300">
                     <div class="flex justify-between">
                         <div>보너스(63점 기준): <span id="subtotal-bonus-progress" class="text-slate-400">0 / 63</span></div>
-                        <div class="text-base text-emerald-400">총점: <span id="current-total-score">0</span></div>
+                        <div class="text-emerald-400 text-sm">총점: <span id="current-total-score">0</span></div>
                     </div>
-                    <div class="text-[10px] text-slate-500 text-center mt-2 lg:hidden">원하는 족보 항목을 탭하면 점수가 최종 기입됩니다.</div>
+                </div>
+            </div>
+
+            <!-- (최우측): 데스크톱 채팅 / 모바일 모달 채팅 영역 -->
+            <div id="chat-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-4 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-72 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:shadow-xl min-h-[360px]">
+                <button onclick="closeMobileChat()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
+                <div class="flex flex-col h-full justify-between">
+                    <h2 class="text-xs font-bold text-slate-300 mb-2 pb-1.5 border-b border-slate-700 flex items-center gap-1">💬 실시간 채팅</h2>
+                    <div id="chat-messages" class="flex-grow overflow-y-auto space-y-1.5 bg-slate-900/50 p-2 rounded-lg border border-slate-700 text-[11px] mb-2.5 h-[240px] max-h-[280px]"></div>
+                    <div class="flex gap-1.5">
+                        <input type="text" id="chat-input" placeholder="메시지를 입력하세요..." class="flex-grow bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500" onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <button onclick="sendChatMessage()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1 rounded-lg text-xs font-bold transition-all">전송</button>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- 모달 시스템 -->
+    <!-- 모달 레이어 -->
     <div id="global-scoreboard-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-4xl rounded-2xl p-6 shadow-2xl relative">
             <button onclick="toggleGlobalScoreboard()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold">✕</button>
             <h3 class="text-lg font-black text-slate-200 mb-4 text-center">📊 전체 플레이어 전적판</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs border-collapse border border-slate-700" id="global-table"></table>
-            </div>
+            <div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse border border-slate-700" id="global-table"></table></div>
         </div>
     </div>
 
-    <!-- 점수 확정 모달: z-[100] 최상단 레이어 부여 -->
-    <div id="score-confirm-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-xs z-[100] flex items-center justify-center p-4">
+    <div id="score-confirm-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-xs z-50 flex items-center justify-center p-4">
         <div class="bg-slate-800 border-2 border-emerald-500 w-full max-w-sm rounded-xl p-6 shadow-2xl text-center">
             <h3 class="text-lg font-bold text-emerald-400 mb-2">🎲 점수 기입 확정</h3>
             <p id="score-confirm-text" class="text-slate-300 text-sm mb-6">점수를 기입하겠습니까?</p>
@@ -238,6 +233,8 @@
 
     <script>
         const socket = io();
+        let clientTimerInterval = null;
+        let timeLeft = 60;
 
         const GAME = {
             roomCode: null,
@@ -247,18 +244,11 @@
             rollsLeft: 3,
             isRolling: false,     
             justRolled: false, 
-            dice: [
-                { value: 1, held: false },
-                { value: 1, held: false },
-                { value: 1, held: false },
-                { value: 1, held: false },
-                { value: 1, held: false }
-            ],
+            dice: Array(5).fill(null).map(() => ({ value: 1, held: false })),
             selectedCatToConfirm: null
         };
 
         const cachedDiceElements = [];
-        let rollSafetyTimer = null;
 
         const CATEGORIES = [
             { id: 'aces', name: '에이스', desc: '1의 눈 합' },
@@ -278,77 +268,24 @@
         let audioCtx = null;
         function playClatterSound() {
             try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                
                 osc.type = Math.random() > 0.4 ? 'triangle' : 'sawtooth';
                 osc.frequency.setValueAtTime(120 + Math.random() * 230, audioCtx.currentTime);
-                
-                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
-                
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
                 const filter = audioCtx.createBiquadFilter();
                 filter.type = 'bandpass';
                 filter.frequency.value = 700;
                 filter.Q.value = 2.5;
-
                 osc.connect(filter);
                 filter.connect(gain);
                 gain.connect(audioCtx.destination);
-                
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.06);
-            } catch (e) {
-                console.log("Audio play blocked:", e);
-            }
-        }
-
-        // --- 플레이어 점수판 객체 안전 조회 ---
-        function getPlayerScoreBoard(player) {
-            if (!player) return {};
-            if (!player.scoreBoard) player.scoreBoard = {};
-            return player.scoreBoard;
-        }
-
-        function resetRollingState() {
-            GAME.isRolling = false;
-            if (rollSafetyTimer) clearTimeout(rollSafetyTimer);
-            const cup = document.getElementById('dice-cup');
-            if (cup) {
-                cup.classList.remove('cup-shaking');
-                cup.style.transform = 'translate(0px, 0px)';
-            }
-        }
-
-        function executeRollProcess() {
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn) return alert("당신의 차례가 아닙니다!");
-            if (GAME.rollsLeft <= 0) return alert("남은 리롤 횟수가 없습니다! 점수를 기록하세요.");
-            if (GAME.isRolling) return;
-
-            GAME.isRolling = true;
-            
-            if (rollSafetyTimer) clearTimeout(rollSafetyTimer);
-            rollSafetyTimer = setTimeout(() => {
-                resetRollingState();
-            }, 1500);
-
-            const cup = document.getElementById('dice-cup');
-            if (cup) cup.classList.add('cup-shaking');
-            playClatterSound();
-
-            socket.emit('shakeCup');
-
-            setTimeout(() => {
-                if (cup) cup.classList.remove('cup-shaking');
-                socket.emit('rollDice');
-            }, 250);
+                osc.stop(audioCtx.currentTime + 0.05);
+            } catch (e) {}
         }
 
         function triggerScoreFireworks(element) {
@@ -356,73 +293,85 @@
             const rect = element.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 15; i++) {
                 const particle = document.createElement('div');
                 particle.className = "fixed pointer-events-none z-50 rounded-full";
-                
-                const colorPool = ['#34d399', '#10b981', '#059669', '#a7f3d0', '#6ee7b7'];
+                const colorPool = ['#34d399', '#10b981', '#059669', '#a7f3d0'];
                 particle.style.backgroundColor = colorPool[Math.floor(Math.random() * colorPool.length)];
-                
-                const size = Math.random() * 6 + 4;
+                const size = Math.random() * 5 + 3;
                 particle.style.width = `${size}px`;
                 particle.style.height = `${size}px`;
                 particle.style.left = `${centerX}px`;
                 particle.style.top = `${centerY}px`;
-                
                 const angle = Math.random() * Math.PI * 2;
-                const velocity = Math.random() * 80 + 40;
-                const destX = Math.cos(angle) * velocity;
-                const destY = Math.sin(angle) * velocity;
-
-                document.body.appendChild(particle);
-
+                const velocity = Math.random() * 60 + 30;
                 particle.animate([
                     { transform: 'translate(0, 0) scale(1)', opacity: 1 },
-                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
-                ], {
-                    duration: 700 + Math.random() * 400,
-                    easing: 'cubic-bezier(0.1, 0.8, 0.3, 1)',
-                    fill: 'forwards'
-                });
-
-                setTimeout(() => particle.remove(), 1100);
+                    { transform: `translate(${Math.cos(angle) * velocity}px, ${Math.sin(angle) * velocity}px) scale(0)`, opacity: 0 }
+                ], { duration: 600, easing: 'ease-out', fill: 'forwards' });
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 700);
             }
         }
 
+        function resetClientTimer() {
+            clearInterval(clientTimerInterval);
+            timeLeft = 60;
+            const display = document.getElementById('turn-timer-display');
+            if (display) display.textContent = timeLeft;
+
+            clientTimerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft < 0) timeLeft = 0;
+                if (display) display.textContent = timeLeft;
+                if (timeLeft === 0) clearInterval(clientTimerInterval);
+            }, 1000);
+        }
+
+        /* 모바일 UI 모달 제어자 (데스크톱 상태 보존) */
         function openMobileCup() {
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn) return;
-            if (GAME.rollsLeft <= 0) return;
-
+            if (GAME.players[GAME.currentPlayerIdx]?.id !== socket.id || GAME.rollsLeft <= 0 || GAME.isRolling) return;
             if (window.innerWidth < 1024) {
-                const cupSec = document.getElementById('cup-section');
-                cupSec.classList.remove('hidden');
-                cupSec.classList.add('flex');
+                const el = document.getElementById('cup-section');
+                el.classList.remove('hidden');
+                el.classList.add('flex');
             }
         }
-
-        function closeMobileCup() {
+        function closeMobileCup() { 
             if (window.innerWidth < 1024) {
-                const cupSec = document.getElementById('cup-section');
-                cupSec.classList.add('hidden');
-                cupSec.classList.remove('flex');
+                const el = document.getElementById('cup-section');
+                el.classList.add('hidden');
+                el.classList.remove('flex');
             }
         }
-
+        
         function openMobileScoreboard() {
             if (window.innerWidth < 1024) {
-                const scoreSec = document.getElementById('scoreboard-section');
-                scoreSec.classList.remove('hidden');
-                scoreSec.classList.add('flex');
+                const el = document.getElementById('scoreboard-section');
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+            }
+        }
+        function closeMobileScoreboard() { 
+            if (window.innerWidth < 1024) {
+                const el = document.getElementById('scoreboard-section');
+                el.classList.add('hidden');
+                el.classList.remove('flex');
             }
         }
 
-        function closeMobileScoreboard() {
+        function openMobileChat() {
             if (window.innerWidth < 1024) {
-                const scoreSec = document.getElementById('scoreboard-section');
-                scoreSec.classList.add('hidden');
-                scoreSec.classList.remove('flex');
+                const el = document.getElementById('chat-section');
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+            }
+        }
+        function closeMobileChat() { 
+            if (window.innerWidth < 1024) {
+                const el = document.getElementById('chat-section');
+                el.classList.add('hidden');
+                el.classList.remove('flex');
             }
         }
 
@@ -432,33 +381,52 @@
         }
 
         function createRoom() {
-            const nameInput = document.getElementById('nickname-input');
-            const name = nameInput.value.trim();
-            if (!name) return alert("닉네임을 입력해 주세요.");
+            const name = document.getElementById('nickname-input').value.trim();
+            if (!name) return alert("닉네임을 입력하세요.");
             socket.emit('createRoom', { name });
         }
 
         function joinRoom() {
-            const nameInput = document.getElementById('nickname-input');
-            const codeInput = document.getElementById('room-code-input');
-            const name = nameInput.value.trim();
-            const roomCode = codeInput.value.trim().toUpperCase();
-            if (!name) return alert("닉네임을 입력해 주세요.");
-            if (!roomCode) return alert("방 코드를 입력해 주세요.");
+            const name = document.getElementById('nickname-input').value.trim();
+            const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+            if (!name || !roomCode) return alert("정보를 완전히 채워주세요.");
             socket.emit('joinRoom', { roomCode, name });
         }
 
-        function startGame() {
-            socket.emit('startGame');
+        function startGame() { socket.emit('startGame'); }
+        function leaveGame() {
+            if (confirm("정말 탈주하시겠습니까? 기록이 소멸되며 순위에서 제외됩니다.")) {
+                socket.emit('leaveGame');
+                window.location.reload();
+            }
         }
 
-        socket.on('roomCreated', ({ roomCode, players }) => {
-            handleRoomEntry(roomCode, players);
+        // 실시간 채팅 메시지 전송
+        function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+            socket.emit('sendMessage', { text });
+            input.value = '';
+        }
+
+        socket.on('messageReceived', ({ sender, text, isSystem }) => {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            const msgEl = document.createElement('div');
+            if (isSystem) {
+                msgEl.className = "text-amber-400 italic bg-slate-950/50 p-1.5 rounded border border-slate-800 my-1 font-medium";
+                msgEl.textContent = text;
+            } else {
+                msgEl.className = "text-slate-200 bg-slate-800/40 p-1.5 rounded border border-slate-700/30";
+                msgEl.innerHTML = `<span class="font-bold text-emerald-400 mr-1">[${sender}]</span> ${text}`;
+            }
+            container.appendChild(msgEl);
+            container.scrollTop = container.scrollHeight;
         });
 
-        socket.on('roomJoined', ({ roomCode, players }) => {
-            handleRoomEntry(roomCode, players);
-        });
+        socket.on('roomCreated', ({ roomCode, players }) => handleRoomEntry(roomCode, players));
+        socket.on('roomJoined', ({ roomCode, players }) => handleRoomEntry(roomCode, players));
 
         function handleRoomEntry(roomCode, players) {
             GAME.roomCode = roomCode;
@@ -471,7 +439,18 @@
         }
 
         socket.on('roomUpdated', ({ players }) => {
+            players.forEach(newP => {
+                const oldP = GAME.players.find(p => p.id === newP.id);
+                if (oldP && oldP.scoreBoard && !newP.scoreBoard) {
+                    newP.scoreBoard = oldP.scoreBoard;
+                }
+            });
+            GAME.players = players;
             updateLobbyUI(players);
+            if (!document.getElementById('game-screen').classList.contains('hidden')) {
+                renderPlayerProfiles();
+                renderScoreboard();
+            }
         });
 
         socket.on('joinError', (msg) => alert(msg));
@@ -507,7 +486,6 @@
                         }
                     }
                 });
-
                 inner.querySelector('.back-card-name').textContent = chooserName;
                 inner.querySelector('.back-card-avatar').src = avatar;
                 inner.querySelector('.back-card-rank').textContent = `${orderNum}순위`;
@@ -518,19 +496,18 @@
                 document.getElementById('card-selection-screen').classList.add('hidden');
                 document.getElementById('game-screen').classList.remove('hidden');
                 setupGamePlay();
-            }, 3000);
+                resetClientTimer();
+            }, 2500);
         });
 
         socket.on('gameStarted', ({ players, currentTurnIdx }) => {
             GAME.players = players;
             GAME.currentPlayerIdx = currentTurnIdx;
             GAME.rollsLeft = 3;
-            document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
-            document.getElementById('early-stop-btn').disabled = true;
-
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             setupGamePlay();
+            resetClientTimer();
         });
 
         socket.on('shakingCup', () => {
@@ -540,22 +517,21 @@
         });
 
         socket.on('diceRolled', ({ dice, rollCount }) => {
-            resetRollingState();
-            
+            document.getElementById('dice-cup').classList.remove('cup-shaking');
             GAME.justRolled = true; 
             GAME.dice = dice;
             GAME.rollsLeft = 3 - rollCount;
+            GAME.isRolling = false;
 
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = (GAME.rollsLeft === 3 || GAME.rollsLeft === 0);
 
             syncDiceStatus();
             calculateAllPotentialScores();
+            resetClientTimer();
 
-            if (GAME.rollsLeft === 0) {
-                setTimeout(() => {
-                    openMobileScoreboard();
-                }, 1000);
+            if (GAME.rollsLeft === 0 && GAME.players[GAME.currentPlayerIdx]?.id === socket.id) {
+                setTimeout(() => openMobileScoreboard(), 1000);
             }
         });
 
@@ -564,15 +540,12 @@
             GAME.dice = dice;
             syncDiceStatus();
             calculateAllPotentialScores();
+            resetClientTimer();
         });
 
         socket.on('reRollStopped', ({ dice }) => {
-            document.querySelectorAll(".field-dice-active").forEach(el => {
-                el.classList.add("animate-suck-in");
-            });
-
+            document.querySelectorAll(".field-dice-active").forEach(el => el.classList.add("animate-suck-in"));
             setTimeout(() => {
-                resetRollingState();
                 GAME.justRolled = false;
                 GAME.dice = dice;
                 GAME.rollsLeft = 0;
@@ -580,50 +553,37 @@
                 document.getElementById('early-stop-btn').disabled = true;
                 syncDiceStatus();
                 calculateAllPotentialScores();
-
                 openMobileScoreboard();
-            }, 250);
+            }, 300);
         });
 
         socket.on('scoreRecorded', ({ playerId, category, score, scoreBoard }) => {
             const p = GAME.players.find(pl => pl.id === playerId);
             if (p) p.scoreBoard = scoreBoard;
-            
             renderScoreboard();
-            
             const targetCell = document.getElementById(`td-score-${category}`);
-            if (targetCell) {
-                triggerScoreFireworks(targetCell);
-            }
-
-            document.getElementById('score-confirm-modal')?.classList.add('hidden');
-            GAME.selectedCatToConfirm = null;
-            closeMobileScoreboard();
+            if (targetCell) triggerScoreFireworks(targetCell);
+            if (window.innerWidth < 1024) closeMobileScoreboard(); 
         });
 
-        // 🔥 [다음 턴 상태 복구 및 점수판 완전 리셋]
-        socket.on('nextTurn', ({ currentTurnIdx, round, gameState, players }) => {
-            resetRollingState();
-
-            if (players && players.length) GAME.players = players;
+        socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
             GAME.currentPlayerIdx = currentTurnIdx;
             GAME.currentRound = round;
-            GAME.dice = gameState.dice;
-            GAME.rollsLeft = 3 - (gameState.rollCount || 0);
+            if (gameState && gameState.dice) GAME.dice = gameState.dice;
+            GAME.rollsLeft = gameState ? (3 - gameState.rollCount) : 3;
             GAME.justRolled = false;
-            GAME.selectedCatToConfirm = null;
+            GAME.isRolling = false;
 
-            document.getElementById('score-confirm-modal')?.classList.add('hidden');
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = true;
 
-            closeMobileScoreboard();
-            setupGamePlay();
-
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (isMyTurn && window.innerWidth < 1024 && GAME.rollsLeft === 3) {
-                openMobileCup();
+            if (window.innerWidth < 1024) {
+                closeMobileCup();
+                closeMobileScoreboard();
+                closeMobileChat();
             }
+            setupGamePlay();
+            resetClientTimer();
         });
 
         socket.on('emojiReceived', ({ playerId, emoji }) => {
@@ -640,6 +600,7 @@
         });
 
         socket.on('gameFinished', ({ players }) => {
+            clearInterval(clientTimerInterval);
             declareGameOverAndRank(players);
         });
 
@@ -647,7 +608,6 @@
             const listContainer = document.getElementById('player-list');
             const countEl = document.getElementById('player-count');
             const startBtn = document.getElementById('start-game-btn');
-
             listContainer.innerHTML = '';
             players.forEach((p) => {
                 const li = document.createElement('li');
@@ -662,7 +622,6 @@
                 `;
                 listContainer.appendChild(li);
             });
-
             countEl.textContent = players.length;
             const myPlayer = players.find(p => p.id === socket.id);
             if (myPlayer && myPlayer.isHost) {
@@ -679,24 +638,22 @@
             container.innerHTML = '';
             for (let i = 0; i < playerCount; i++) {
                 const card = document.createElement('div');
-                card.className = "w-28 h-40 cursor-pointer group perspective-600 relative";
+                card.className = "w-24 h-36 cursor-pointer group perspective-600 relative";
                 card.setAttribute('data-card-index', i);
                 card.innerHTML = `
                     <div class="card-inner relative w-full h-full text-center rounded-xl border border-zinc-800 shadow-xl bg-zinc-950 transition-all duration-500">
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-zinc-950 flex flex-col items-center justify-center backface-hidden p-2 border border-zinc-800">
-                            <span class="text-zinc-700 text-3xl mb-1">♠</span>
+                            <span class="text-zinc-700 text-2xl mb-1">♠</span>
                             <span class="text-[9px] text-zinc-500 font-bold uppercase tracking-wider select-status">선택 대기</span>
                         </div>
                         <div class="absolute inset-0 w-full h-full rounded-xl bg-slate-900 border-2 border-emerald-500 flex flex-col items-center justify-center rotate-y-180 backface-hidden p-2">
-                            <img class="w-10 h-10 rounded-full bg-slate-800 mb-1 back-card-avatar" src="" />
-                            <span class="text-xs font-bold text-slate-300 truncate max-w-full back-card-name">이름</span>
-                            <span class="text-lg font-black text-emerald-400 mt-2 back-card-rank">0순위</span>
+                            <img class="w-8 h-8 rounded-full bg-slate-800 mb-1 back-card-avatar" src="" />
+                            <span class="text-[10px] font-bold text-slate-300 truncate max-w-full back-card-name">이름</span>
+                            <span class="text-sm font-black text-emerald-400 mt-1 back-card-rank">0순위</span>
                         </div>
                     </div>
                 `;
-                card.addEventListener('click', () => {
-                    socket.emit('selectCard', { cardIndex: i });
-                });
+                card.addEventListener('click', () => socket.emit('selectCard', { cardIndex: i }));
                 container.appendChild(card);
             }
         }
@@ -710,111 +667,61 @@
         function renderPlayerProfiles() {
             const container = document.getElementById('player-profiles-row');
             container.innerHTML = '';
-            
-            const activePlayer = GAME.players[GAME.currentPlayerIdx];
-            const isMyTurn = activePlayer?.id === socket.id;
-
-            const titleEl = document.getElementById('turn-indicator-title');
-            const subEl = document.getElementById('turn-indicator-sub');
-            if (titleEl && subEl) {
-                if (isMyTurn) {
-                    titleEl.textContent = "🎲 당신의 차례입니다!";
-                    subEl.textContent = "컵을 잡고 흔들거나 툭 터치하세요!";
-                    subEl.className = "text-xs text-emerald-400 font-bold mt-1 animate-pulse";
-                } else {
-                    titleEl.textContent = `⏳ ${activePlayer?.name || '상대'}의 차례`;
-                    subEl.textContent = "상대방이 컵을 흔들고 있습니다...";
-                    subEl.className = "text-xs text-slate-400 font-medium mt-1";
-                }
-            }
-
             GAME.players.forEach((p, seqIdx) => {
                 const isCurrent = seqIdx === GAME.currentPlayerIdx;
                 const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(p.name)}`;
-
                 const avatarEl = document.createElement('div');
-                avatarEl.className = `flex flex-col items-center p-2 rounded-xl border min-w-[75px] relative transition-all duration-300
-                    ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md shadow-emerald-950 opacity-100' : 'bg-slate-900 border-slate-800 opacity-50'}`;
-                
+                avatarEl.className = `flex flex-col items-center p-1.5 rounded-xl border min-w-[65px] relative transition-all duration-300
+                    ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md opacity-100' : 'bg-slate-900 border-slate-800 opacity-40'}`;
                 avatarEl.innerHTML = `
-                    <div id="emoji-bubble-${p.id}" class="absolute -top-8 bg-white border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50 transform translate-y-0"></div>
-                    <img src="${avatar}" class="w-11 h-11 rounded-full bg-slate-800 border-2 border-slate-700" />
-                    <span class="text-[10px] font-bold mt-1.5 text-slate-300 truncate max-w-[65px]">${p.name}</span>
+                    <div id="emoji-bubble-${p.id}" class="absolute -top-8 bg-white border border-slate-200 text-slate-950 text-base font-bold py-0.5 px-2 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50"></div>
+                    <img src="${avatar}" class="w-8 h-8 rounded-full bg-slate-800 border" />
+                    <span class="text-[9px] font-bold mt-1 text-slate-300 truncate max-w-[55px]">${p.name}</span>
                 `;
                 container.appendChild(avatarEl);
             });
         }
 
-        function triggerEmoji(emoji) {
-            socket.emit('sendEmoji', { emoji });
-        }
+        function triggerEmoji(emoji) { socket.emit('sendEmoji', { emoji }); }
 
         function getDiceSVGContent(value) {
             const dotsLayout = {
-                1: [[50, 50]],
-                2: [[25, 25], [75, 75]],
-                3: [[25, 25], [50, 50], [75, 75]],
-                4: [[25, 25], [25, 75], [75, 25], [75, 75]],
-                5: [[25, 25], [25, 75], [50, 50], [75, 25], [75, 75]],
+                1: [[50, 50]], 2: [[25, 25], [75, 75]], 3: [[25, 25], [50, 50], [75, 75]],
+                4: [[25, 25], [25, 75], [75, 25], [75, 75]], 5: [[25, 25], [25, 75], [50, 50], [75, 25], [75, 75]],
                 6: [[25, 25], [25, 50], [25, 75], [75, 25], [75, 50], [75, 75]]
             };
-            const dots = dotsLayout[value] || [];
             let dotsSvg = '';
-            dots.forEach(([cx, cy]) => {
-                const color = (value === 1) ? '#ef4444' : '#0f172a';
-                const r = (value === 1) ? 11 : 8;
-                dotsSvg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" />`;
+            (dotsLayout[value] || []).forEach(([cx, cy]) => {
+                dotsSvg += `<circle cx="${cx}" cy="${cy}" r="${value === 1 ? 11 : 8}" fill="${value === 1 ? '#ef4444' : '#0f172a'}" />`;
             });
-            return `<svg viewBox="0 0 100 100" class="w-full h-full p-2.5">${dotsSvg}</svg>`;
-        }
-
-        function updateCupInsideIndicators() {
-            const container = document.getElementById('cup-inside-indicators');
-            container.innerHTML = '';
-            if (GAME.rollsLeft === 3 || GAME.isRolling) {
-                const count = GAME.dice.filter(d => !d.held).length;
-                for (let i = 0; i < count; i++) {
-                    const dot = document.createElement('span');
-                    dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 border border-emerald-300 shadow-sm animate-ping";
-                    container.appendChild(dot);
-                }
-            }
+            return `<svg viewBox="0 0 100 100" class="w-full h-full p-2">${dotsSvg}</svg>`;
         }
 
         function syncDiceStatus() {
             const homeContainer = document.getElementById('hold-home');
             const fieldWrapper = document.getElementById('field-dice-wrapper');
             const emptyMsg = document.getElementById('field-empty-msg');
-
             const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
             const shouldHideField = (GAME.rollsLeft === 3 || GAME.isRolling);
 
             homeContainer.innerHTML = '';
             fieldWrapper.innerHTML = '';
-
-            let heldCount = 0;
-            let fieldCount = 0;
+            let heldCount = 0, fieldCount = 0;
 
             GAME.dice.forEach((die, idx) => {
-                let el = cachedDiceElements[idx];
-                if (!el) {
-                    el = document.createElement('div');
-                    el.id = `persistent-die-${idx}`;
-                    cachedDiceElements[idx] = el;
-                }
+                let el = cachedDiceElements[idx] || document.createElement('div');
+                el.id = `persistent-die-${idx}`;
+                cachedDiceElements[idx] = el;
 
-                const storedVal = el.getAttribute('data-value');
-                if (storedVal !== String(die.value) || !el.innerHTML) {
+                if (el.getAttribute('data-value') !== String(die.value) || !el.innerHTML) {
                     el.innerHTML = getDiceSVGContent(die.value);
                     el.setAttribute('data-value', die.value);
                 }
-
-                el.className = "w-full aspect-square rounded-xl shadow-lg flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-all duration-75";
-
+                el.className = "w-full aspect-square rounded-xl shadow-md flex items-center justify-center relative cursor-pointer select-none active:scale-95 transition-all";
                 el.onclick = null;
+
                 if (isMyTurn && !GAME.isRolling && (die.held || (GAME.rollsLeft > 0 && GAME.rollsLeft < 3))) {
-                    el.onclick = (e) => {
-                        e.stopPropagation();
+                    el.onclick = () => {
                         GAME.justRolled = false;
                         socket.emit('toggleDie', { index: idx });
                     };
@@ -827,140 +734,119 @@
                 } else {
                     if (!shouldHideField) {
                         fieldCount++;
-                        el.classList.add("bg-white", "hover:bg-zinc-50", "border-zinc-200");
-                        if (GAME.justRolled) {
-                            el.classList.add("animate-dice-roll", "field-dice-active");
-                        } else {
-                            el.classList.add("animate-dice-static", "field-dice-active");
-                        }
+                        el.classList.add("bg-white", "border-zinc-200");
+                        el.classList.add(GAME.justRolled ? "animate-dice-roll" : "animate-dice-static", "field-dice-active");
                         fieldWrapper.appendChild(el);
                     }
                 }
             });
 
             GAME.justRolled = false;
-
             for (let i = heldCount; i < 5; i++) {
-                const emptySlot = document.createElement('div');
-                emptySlot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square bg-black/40";
-                homeContainer.appendChild(emptySlot);
+                const slot = document.createElement('div');
+                slot.className = "border-2 border-dashed border-slate-800 rounded-xl aspect-square bg-black/40";
+                homeContainer.appendChild(slot);
             }
-
             for (let i = fieldCount; i < 5; i++) {
-                const emptySlot = document.createElement('div');
-                emptySlot.className = "border-2 border-dashed border-red-900/40 rounded-xl aspect-square bg-red-950/20";
-                fieldWrapper.appendChild(emptySlot);
+                const slot = document.createElement('div');
+                slot.className = "border-2 border-dashed border-red-900/40 rounded-xl aspect-square bg-red-950/20";
+                fieldWrapper.appendChild(slot);
             }
-
-            if (fieldCount > 0) {
-                emptyMsg.classList.add('hidden');
-            } else {
+            if (fieldCount > 0) emptyMsg.classList.add('hidden');
+            else {
                 emptyMsg.classList.remove('hidden');
-                emptyMsg.textContent = GAME.isRolling ? "컵 내부에서 격렬히 섞이는 중..." : "주사위가 컵 안에 있습니다. 컵을 흔들어주세요!";
+                emptyMsg.textContent = GAME.isRolling ? "진동 감지! 주사위를 격렬히 흔드는 중..." : "주사위가 컵 안에 있습니다. 섞어 던지세요!";
             }
-            updateCupInsideIndicators();
-            syncMobileControlButtons(); 
-        }
+            
+            const indicatorBox = document.getElementById('cup-inside-indicators');
+            indicatorBox.innerHTML = '';
+            if (GAME.rollsLeft === 3 || GAME.isRolling) {
+                const insideCount = GAME.dice.filter(d => !d.held).length;
+                for (let i = 0; i < insideCount; i++) {
+                    const dot = document.createElement('span');
+                    dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping";
+                    indicatorBox.appendChild(dot);
+                }
+            }
 
-        function syncMobileControlButtons() {
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
+            const shakeBtn = document.getElementById('mobile-shake-btn');
             const stopBtn = document.getElementById('mobile-stop-btn');
-
+            if (shakeBtn) {
+                if (isMyTurn && GAME.rollsLeft > 0 && !GAME.isRolling) {
+                    shakeBtn.removeAttribute('disabled');
+                    shakeBtn.className = "py-2.5 bg-emerald-600 rounded-xl font-bold text-[11px] text-white flex flex-col items-center justify-center gap-1 transition-all";
+                } else {
+                    shakeBtn.setAttribute('disabled', 'true');
+                    shakeBtn.className = "py-2.5 bg-slate-800 text-slate-600 border border-slate-700/40 rounded-xl font-bold text-[11px] flex flex-col items-center justify-center gap-1 opacity-30 cursor-not-allowed";
+                }
+            }
             if (stopBtn) {
                 if (isMyTurn && GAME.rollsLeft > 0 && GAME.rollsLeft < 3 && !GAME.isRolling) {
                     stopBtn.removeAttribute('disabled');
-                    stopBtn.className = "py-3 bg-red-600 hover:bg-red-500 border border-red-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all";
+                    stopBtn.className = "py-2.5 bg-red-600 rounded-xl font-bold text-[11px] text-white flex flex-col items-center justify-center gap-1 transition-all";
                 } else {
                     stopBtn.setAttribute('disabled', 'true');
-                    stopBtn.className = "py-3 bg-slate-800 text-slate-600 border border-slate-700/40 rounded-xl font-bold text-xs flex items-center justify-center gap-2 opacity-40 cursor-not-allowed transition-all";
+                    stopBtn.className = "py-2.5 bg-slate-800 text-slate-600 border border-slate-700/40 rounded-xl font-bold text-[11px] flex flex-col items-center justify-center gap-1 opacity-30 cursor-not-allowed";
                 }
             }
         }
 
-        // --- 물리 컵 흔들기 & 터치 이벤트 ---
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let lastPointerX = 0;
-        let lastPointerY = 0;
-        let totalMovedDist = 0;
-
+        // 드래그 센서
+        let isDragging = false, dragStartX = 0, dragStartY = 0, accumulatedDistance = 0, lastPointerX = 0, lastPointerY = 0, shakeTriggered = false;
         const cup = document.getElementById('dice-cup');
 
-        function startCupDrag(e) {
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn) return alert("당신의 차례가 아닙니다!");
-            if (GAME.rollsLeft <= 0) return alert("남은 리롤 횟수가 없습니다! 점수를 기록하세요.");
-            if (GAME.isRolling) return;
-
-            isDragging = true;
-            totalMovedDist = 0;
-
+        function startDrag(e) {
+            if (GAME.players[GAME.currentPlayerIdx]?.id !== socket.id || GAME.rollsLeft <= 0 || GAME.isRolling) return;
+            isDragging = true; shakeTriggered = false; accumulatedDistance = 0;
             const pointer = e.touches ? e.touches[0] : e;
-            dragStartX = pointer.clientX;
-            dragStartY = pointer.clientY;
-            lastPointerX = pointer.clientX;
-            lastPointerY = pointer.clientY;
-
-            if (cup) cup.style.transition = 'none'; 
+            dragStartX = pointer.clientX; dragStartY = pointer.clientY;
+            lastPointerX = pointer.clientX; lastPointerY = pointer.clientY;
+            cup.style.transition = 'none';
         }
-
-        function moveCupDrag(e) {
+        function moveDrag(e) {
             if (!isDragging) return;
             if (e.cancelable) e.preventDefault();
-
             const pointer = e.touches ? e.touches[0] : e;
-            let dx = pointer.clientX - dragStartX;
-            let dy = pointer.clientY - dragStartY;
-
-            const limitRadius = 100;
-            const dist = Math.hypot(dx, dy);
-            if (dist > limitRadius) {
+            let dx = pointer.clientX - dragStartX, dy = pointer.clientY - dragStartY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 110) {
                 const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * limitRadius;
-                dy = Math.sin(angle) * limitRadius;
+                dx = Math.cos(angle) * 110; dy = Math.sin(angle) * 110;
             }
-
-            if (cup) cup.style.transform = `translate(${dx}px, ${dy}px)`;
-
-            const step = Math.hypot(pointer.clientX - lastPointerX, pointer.clientY - lastPointerY);
-            if (step > 4) {
-                totalMovedDist += step;
-                playClatterSound(); 
-                lastPointerX = pointer.clientX;
-                lastPointerY = pointer.clientY;
-
-                if (totalMovedDist > 20 && cup) {
+            cup.style.transform = `translate(${dx}px, ${dy}px)`;
+            const step = Math.sqrt(Math.pow(pointer.clientX - lastPointerX, 2) + Math.pow(pointer.clientY - lastPointerY, 2));
+            if (step > 12) {
+                accumulatedDistance += step;
+                playClatterSound();
+                lastPointerX = pointer.clientX; lastPointerY = pointer.clientY;
+                if (accumulatedDistance > 350 && !shakeTriggered) {
+                    shakeTriggered = true;
                     cup.classList.add('cup-shaking');
+                    socket.emit('shakeCup');
                 }
             }
         }
-
-        function endCupDrag() {
+        function endDrag() {
             if (!isDragging) return;
             isDragging = false;
-
-            if (cup) {
-                cup.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                cup.style.transform = 'translate(0px, 0px)';
+            cup.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            cup.style.transform = 'translate(0px, 0px)';
+            cup.classList.remove('cup-shaking');
+            if (shakeTriggered) {
+                socket.emit('rollDice');
+                setTimeout(() => closeMobileCup(), 200);
             }
-
-            executeRollProcess();
         }
 
-        if (cup) {
-            cup.addEventListener('mousedown', startCupDrag);
-            window.addEventListener('mousemove', moveCupDrag);
-            window.addEventListener('mouseup', endCupDrag);
-
-            cup.addEventListener('touchstart', startCupDrag, { passive: false });
-            window.addEventListener('touchmove', moveCupDrag, { passive: false });
-            window.addEventListener('touchend', endCupDrag);
-        }
+        cup.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', moveDrag);
+        window.addEventListener('mouseup', endDrag);
+        cup.addEventListener('touchstart', startDrag, { passive: false });
+        window.addEventListener('touchmove', moveDrag, { passive: false });
+        window.addEventListener('touchend', endDrag);
 
         function triggerEarlyStop() {
-            const isMyTurn = GAME.players[GAME.currentPlayerIdx]?.id === socket.id;
-            if (!isMyTurn || GAME.rollsLeft === 3) return;
+            if (GAME.players[GAME.currentPlayerIdx]?.id !== socket.id || GAME.rollsLeft === 3) return;
             socket.emit('stopReRoll');
         }
 
@@ -968,7 +854,6 @@
             const counts = Array(7).fill(0);
             values.forEach(v => counts[v]++);
             const totalSum = values.reduce((a, b) => a + b, 0);
-
             switch (catId) {
                 case 'aces': return counts[1] * 1;
                 case 'deuces': return counts[2] * 2;
@@ -978,65 +863,58 @@
                 case 'hexas': return counts[6] * 6;
                 case 'choice': return totalSum;
                 case 'fourOfAKind': return counts.some(c => c >= 4) ? totalSum : 0;
-                case 'fullHouse':
-                    const has3 = counts.includes(3);
-                    const has2 = counts.includes(2);
-                    const has5 = counts.includes(5);
-                    return (has3 && has2) || has5 ? totalSum : 0;
-                case 'smallStraight':
-                    const uStr = [...new Set(values)].sort().join('');
-                    return /1.*2.*3.*4|2.*3.*4.*5|3.*4.*5.*6/.test(uStr) ? 15 : 0;
-                case 'largeStraight':
-                    const sStr = [...new Set(values)].sort().join('');
-                    return (sStr === '12345' || sStr === '23456') ? 30 : 0;
+                case 'fullHouse': return (counts.includes(3) && counts.includes(2)) || counts.includes(5) ? totalSum : 0;
+                case 'smallStraight': return /1.*2.*3.*4|2.*3.*4.*5|3.*4.*5.*6/.test([...new Set(values)].sort().join('')) ? 15 : 0;
+                case 'largeStraight': return ['12345', '23456'].includes([...new Set(values)].sort().join('')) ? 30 : 0;
                 case 'yacht': return counts.includes(5) ? 50 : 0;
                 default: return 0;
             }
         }
 
-        // 🔥 [점수판 렌더링 및 행 전체 클릭 보장]
+        /* 점수판 렌더링 및 이벤트 동기화 */
         function renderScoreboard() {
             const body = document.getElementById('yacht-scoreboard-body');
             if (!body) return;
             body.innerHTML = '';
-
+            
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
             if (!activePlayer) return;
-            
-            const isMyTurn = activePlayer.id === socket.id;
-            const scoreBoard = getPlayerScoreBoard(activePlayer);
 
-            document.getElementById('scoreboard-target-header').textContent = `${activePlayer.name}의 점수판`;
+            const isMyTurn = activePlayer.id === socket.id;
+            const header = document.getElementById('scoreboard-target-header');
+            if (header) header.textContent = `${activePlayer.name}의 기록`;
+
+            const scoreBoard = activePlayer.scoreBoard || {};
 
             CATEGORIES.forEach(cat => {
-                const writtenScore = scoreBoard[cat.id];
-                const hasScore = writtenScore !== undefined;
-
+                const score = scoreBoard[cat.id];
+                const hasScore = (score !== undefined && score !== null);
                 const tr = document.createElement('tr');
-                tr.className = `border-b border-slate-700/50 transition-all ${hasScore ? 'bg-slate-900/40 opacity-70 cursor-not-allowed' : 'hover:bg-slate-700/50 cursor-pointer'}`;
                 
-                // 내부 텍스트에 pointer-events-none 적용하여 어디를 눌러도 tr 클릭 감지
+                tr.className = `border-b border-slate-700/40 transition-all ${
+                    hasScore 
+                        ? 'bg-slate-900/30 opacity-60' 
+                        : (isMyTurn ? 'hover:bg-slate-700/50 cursor-pointer' : 'opacity-80')
+                }`;
+                
                 tr.innerHTML = `
-                    <td class="py-2.5 px-3 font-semibold text-slate-200 pointer-events-none">
+                    <td class="py-2 px-2 font-semibold text-slate-200">
                         ${cat.name}
                         <div class="text-[9px] text-slate-500 font-normal">${cat.desc}</div>
                     </td>
-                    <td class="py-2.5 px-3 text-center text-slate-500 pointer-events-none">-</td>
-                    <td class="py-2.5 px-3 text-right font-black text-xs pointer-events-none" id="td-score-${cat.id}">
-                        ${hasScore ? `<span class="text-emerald-400 font-extrabold text-sm">${writtenScore}</span>` : `<span class="text-slate-600">-</span>`}
+                    <td class="py-2 px-2 text-right font-black text-xs" id="td-score-${cat.id}">
+                        ${hasScore ? `<span class="text-emerald-400 font-extrabold text-xs">${score}</span>` : `<span class="text-slate-600">-</span>`}
                     </td>
                 `;
 
                 if (!hasScore && isMyTurn) {
-                    tr.onclick = (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        triggerSelectCategory(cat.id);
-                    };
+                    tr.onclick = () => triggerSelectCategory(cat.id);
+                } else {
+                    tr.onclick = null;
                 }
+                
                 body.appendChild(tr);
             });
-
             updatePlayerSummaryStats(activePlayer);
         }
 
@@ -1045,74 +923,62 @@
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
             if (!activePlayer) return;
 
-            const scoreBoard = getPlayerScoreBoard(activePlayer);
+            const scoreBoard = activePlayer.scoreBoard || {};
             const values = GAME.dice.map(d => d.value);
 
             CATEGORIES.forEach(cat => {
-                if (scoreBoard[cat.id] === undefined) {
+                if (scoreBoard[cat.id] === undefined || scoreBoard[cat.id] === null) {
                     const preview = getComputedScore(cat.id, values);
                     const cell = document.getElementById(`td-score-${cat.id}`);
                     if (cell) {
-                        cell.innerHTML = `<span class="text-emerald-400 font-black animate-pulse pointer-events-none">${preview}</span>`;
+                        cell.innerHTML = `<span class="text-emerald-400/90 font-black animate-pulse">${preview}</span>`;
                     }
                 }
             });
         }
 
-        // 🔥 [점수 선택 및 모달 오픈 안전 함수]
         function triggerSelectCategory(catId) {
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
-            const isMyTurn = activePlayer?.id === socket.id;
-
-            if (!isMyTurn) return alert("당신의 차례가 아닙니다!");
-            if (GAME.rollsLeft === 3) return alert("최소 1회 이상 주사위를 굴린 뒤 점수를 기입할 수 있습니다!");
+            if (!activePlayer || activePlayer.id !== socket.id) return;
+            if (GAME.rollsLeft === 3) return alert("최소 1번 이상 주사위를 굴려야 기록 가능합니다.");
             if (GAME.isRolling) return;
-
-            const scoreBoard = getPlayerScoreBoard(activePlayer);
-            if (scoreBoard[catId] !== undefined) return;
-
-            const values = GAME.dice.map(d => d.value);
-            const calculated = getComputedScore(catId, values);
+            
+            const scoreBoard = activePlayer.scoreBoard || {};
+            if (scoreBoard[catId] !== undefined && scoreBoard[catId] !== null) return;
+            
+            const calculated = getComputedScore(catId, GAME.dice.map(d => d.value));
             const target = CATEGORIES.find(c => c.id === catId);
+            if (!target) return;
             
-            GAME.selectedCatToConfirm = { catId, score: calculated };
-            document.getElementById('score-confirm-text').innerHTML = `
-                [ ${target.name} ] 항목에 기입될 점수는 <strong class="text-emerald-400 text-lg">${calculated}점</strong>입니다.<br>
-                정말 확정하여 족보에 기입하겠습니까?
-            `;
+            GAME.selectedCatToConfirm = { category: catId, catId: catId, score: calculated };
             
-            const confirmModal = document.getElementById('score-confirm-modal');
-            confirmModal.classList.remove('hidden');
+            const textEl = document.getElementById('score-confirm-text');
+            if (textEl) {
+                textEl.innerHTML = `[${target.name}] 항목에 <strong class="text-emerald-400 text-base">${calculated}점</strong>을 확정 기입할까요?`;
+            }
+            document.getElementById('score-confirm-modal').classList.remove('hidden');
         }
 
         document.getElementById('score-confirm-cancel').addEventListener('click', () => {
             document.getElementById('score-confirm-modal').classList.add('hidden');
             GAME.selectedCatToConfirm = null;
         });
-
         document.getElementById('score-confirm-ok').addEventListener('click', () => {
             if (!GAME.selectedCatToConfirm) return;
-            const { catId, score } = GAME.selectedCatToConfirm;
-            socket.emit('recordScore', { category: catId, score });
+            socket.emit('recordScore', GAME.selectedCatToConfirm);
             document.getElementById('score-confirm-modal').classList.add('hidden');
             GAME.selectedCatToConfirm = null;
         });
 
         function updatePlayerSummaryStats(player) {
-            const scoreBoard = getPlayerScoreBoard(player);
-            const subtotalKeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
+            if (!player) return;
+            const scoreBoard = player.scoreBoard || {};
             let subtotal = 0;
-            subtotalKeys.forEach(k => subtotal += (scoreBoard[k] || 0));
-
-            const progressEl = document.getElementById('subtotal-bonus-progress');
-            if (subtotal >= 63) {
-                progressEl.textContent = `${subtotal} / 63 (보너스 +35 확정! 🎉)`;
-                progressEl.className = "text-emerald-400 font-black";
-            } else {
-                progressEl.textContent = `${subtotal} / 63`;
-                progressEl.className = "text-slate-400";
-            }
-
+            ['aces','deuces','threes','fours','fives','hexas'].forEach(k => subtotal += (scoreBoard[k] || 0));
+            const prog = document.getElementById('subtotal-bonus-progress');
+            prog.textContent = subtotal >= 63 ? `${subtotal} / 63 (보너스 확정! 🎉)` : `${subtotal} / 63`;
+            prog.className = subtotal >= 63 ? "text-emerald-400 font-bold" : "text-slate-400";
+            
             let total = subtotal >= 63 ? 35 : 0;
             Object.keys(scoreBoard).forEach(k => total += (scoreBoard[k] || 0));
             document.getElementById('current-total-score').textContent = total;
@@ -1123,76 +989,60 @@
             if (modal.classList.contains('hidden')) {
                 buildGlobalScoreTable();
                 modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
-            }
+            } else modal.classList.add('hidden');
         }
 
         function buildGlobalScoreTable() {
             const table = document.getElementById('global-table');
             table.innerHTML = '';
-
             const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            headerRow.className = "bg-slate-900 border-b border-slate-700 text-slate-400";
-            headerRow.innerHTML = `<th class="py-2 px-3 font-bold border-r border-slate-700">족보 이름</th>`;
-            
-            GAME.players.forEach(p => {
-                headerRow.innerHTML += `<th class="py-2 px-3 font-bold text-center border-r border-slate-700">${p.name}</th>`;
-            });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
+            const hRow = document.createElement('tr');
+            hRow.className = "bg-slate-900 border-b border-slate-700 text-slate-400";
+            hRow.innerHTML = `<th class="py-2 px-3 font-bold border-r border-slate-700">족보 이름</th>`;
+            GAME.players.forEach(p => hRow.innerHTML += `<th class="py-2 px-3 font-bold text-center border-r border-slate-700">${p.name}</th>`);
+            thead.appendChild(hRow); table.appendChild(thead);
 
             const tbody = document.createElement('tbody');
             tbody.className = "divide-y divide-slate-700";
-
             CATEGORIES.forEach(cat => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-700/20";
                 tr.innerHTML = `<td class="py-2 px-3 text-slate-300 font-semibold border-r border-slate-700">${cat.name}</td>`;
-
                 GAME.players.forEach(p => {
-                    const sb = getPlayerScoreBoard(p);
+                    const sb = p.scoreBoard || {};
                     const val = sb[cat.id];
-                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== undefined ? val : '-'}</td>`;
+                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== undefined && val !== null ? val : '-'}</td>`;
                 });
                 tbody.appendChild(tr);
             });
 
-            const totalTr = document.createElement('tr');
-            totalTr.className = "bg-slate-950 font-bold border-t border-slate-600";
-            totalTr.innerHTML = `<td class="py-2 px-3 text-emerald-400 border-r border-slate-700">최종 누계 점수</td>`;
-
+            const fRow = document.createElement('tr');
+            fRow.className = "bg-slate-950 font-bold border-t border-slate-600";
+            fRow.innerHTML = `<td class="py-2 px-3 text-emerald-400 border-r border-slate-700">종합 합계</td>`;
             GAME.players.forEach(p => {
-                const sb = getPlayerScoreBoard(p);
-                const subkeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
+                const sb = p.scoreBoard || {};
                 let sub = 0;
-                subkeys.forEach(k => sub += (sb[k] || 0));
+                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (sb[k] || 0));
                 let tot = sub >= 63 ? 35 : 0;
                 Object.keys(sb).forEach(k => tot += (sb[k] || 0));
-                totalTr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-emerald-400 font-black">${tot}점</td>`;
+                fRow.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-emerald-400 font-black">${tot}점</td>`;
             });
-            tbody.appendChild(totalTr);
-            table.appendChild(tbody);
+            tbody.appendChild(fRow); table.appendChild(tbody);
         }
 
         function declareGameOverAndRank(finalPlayers) {
-            const rankingList = finalPlayers.map(p => {
-                const sb = getPlayerScoreBoard(p);
-                const subkeys = ['aces', 'deuces', 'threes', 'fours', 'fives', 'hexas'];
+            const list = finalPlayers.map(p => {
+                const sb = p.scoreBoard || {};
                 let sub = 0;
-                subkeys.forEach(k => sub += (sb[k] || 0));
+                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (sb[k] || 0));
                 let tot = sub >= 63 ? 35 : 0;
                 Object.keys(sb).forEach(k => tot += (sb[k] || 0));
                 return { name: p.name, total: tot };
-            });
+            }).sort((a,b) => b.total - a.total);
 
-            rankingList.sort((a, b) => b.total - a.total);
-            let result = "🎮 게임 종료! 최종 랭킹 순위표 🎮\n\n";
-            rankingList.forEach((rank, idx) => {
-                result += `👑 ${idx + 1}위: ${rank.name} (${rank.total}점)\n`;
-            });
-            alert(result);
+            let res = "🎮 게임 종료! 최종 전적 랭킹 🎮\n\n";
+            list.forEach((r, i) => res += `👑 ${i+1}위: ${r.name} (${r.total}점)\n`);
+            alert(res);
             window.location.reload();
         }
     </script>
