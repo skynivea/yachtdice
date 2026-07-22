@@ -99,7 +99,7 @@
         <!-- 인게임 화면 -->
         <section id="game-screen" class="hidden w-full max-w-[95%] xl:max-w-7xl flex flex-col lg:flex-row gap-4 xl:gap-6 items-stretch justify-center relative">
             
-            <!-- (좌측): 보관용 및 메인 게임 필드 -->
+            <!-- (좌측): 게임판 -->
             <div class="flex-1 bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col justify-between shadow-xl min-w-[320px] max-w-[420px] mx-auto lg:mx-0 relative z-10">
                 <div>
                     <h3 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider text-center">보관용 홀드 홈</h3>
@@ -192,7 +192,7 @@
                 </div>
             </div>
 
-            <!-- (최우측): 데스크톱 채팅 / 모바일 모달 채팅 영역 -->
+            <!-- (최우측): 채팅 영역 -->
             <div id="chat-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-4 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-72 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:shadow-xl min-h-[360px]">
                 <button onclick="closeMobileChat()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
                 <div class="flex flex-col h-full justify-between">
@@ -328,52 +328,27 @@
             }, 1000);
         }
 
-        /* 모바일 UI 모달 제어자 (데스크톱 상태 보존) */
         function openMobileCup() {
             if (GAME.players[GAME.currentPlayerIdx]?.id !== socket.id || GAME.rollsLeft <= 0 || GAME.isRolling) return;
             if (window.innerWidth < 1024) {
-                const el = document.getElementById('cup-section');
-                el.classList.remove('hidden');
-                el.classList.add('flex');
+                document.getElementById('cup-section').classList.replace('hidden', 'flex');
             }
         }
-        function closeMobileCup() { 
-            if (window.innerWidth < 1024) {
-                const el = document.getElementById('cup-section');
-                el.classList.add('hidden');
-                el.classList.remove('flex');
-            }
-        }
+        function closeMobileCup() { document.getElementById('cup-section').classList.replace('flex', 'hidden'); }
         
         function openMobileScoreboard() {
             if (window.innerWidth < 1024) {
-                const el = document.getElementById('scoreboard-section');
-                el.classList.remove('hidden');
-                el.classList.add('flex');
+                document.getElementById('scoreboard-section').classList.replace('hidden', 'flex');
             }
         }
-        function closeMobileScoreboard() { 
-            if (window.innerWidth < 1024) {
-                const el = document.getElementById('scoreboard-section');
-                el.classList.add('hidden');
-                el.classList.remove('flex');
-            }
-        }
+        function closeMobileScoreboard() { document.getElementById('scoreboard-section').classList.replace('flex', 'hidden'); }
 
         function openMobileChat() {
             if (window.innerWidth < 1024) {
-                const el = document.getElementById('chat-section');
-                el.classList.remove('hidden');
-                el.classList.add('flex');
+                document.getElementById('chat-section').classList.replace('hidden', 'flex');
             }
         }
-        function closeMobileChat() { 
-            if (window.innerWidth < 1024) {
-                const el = document.getElementById('chat-section');
-                el.classList.add('hidden');
-                el.classList.remove('flex');
-            }
-        }
+        function closeMobileChat() { document.getElementById('chat-section').classList.replace('flex', 'hidden'); }
 
         function showJoinInput() {
             document.getElementById('lobby-buttons').classList.add('hidden');
@@ -401,7 +376,6 @@
             }
         }
 
-        // 실시간 채팅 메시지 전송
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -428,25 +402,30 @@
         socket.on('roomCreated', ({ roomCode, players }) => handleRoomEntry(roomCode, players));
         socket.on('roomJoined', ({ roomCode, players }) => handleRoomEntry(roomCode, players));
 
+        function sanitizePlayers(newPlayers) {
+            return newPlayers.map(np => {
+                const existing = GAME.players.find(p => p.id === np.id);
+                return {
+                    ...np,
+                    scoreBoard: np.scoreBoard || existing?.scoreBoard || {}
+                };
+            });
+        }
+
         function handleRoomEntry(roomCode, players) {
             GAME.roomCode = roomCode;
+            GAME.players = sanitizePlayers(players);
             document.getElementById('display-room-code').textContent = roomCode;
             document.getElementById('room-info-display').classList.remove('hidden');
             document.getElementById('lobby-buttons').classList.add('hidden');
             document.getElementById('join-input-area').classList.add('hidden');
             document.getElementById('room-setup').classList.remove('hidden');
-            updateLobbyUI(players);
+            updateLobbyUI(GAME.players);
         }
 
         socket.on('roomUpdated', ({ players }) => {
-            players.forEach(newP => {
-                const oldP = GAME.players.find(p => p.id === newP.id);
-                if (oldP && oldP.scoreBoard && !newP.scoreBoard) {
-                    newP.scoreBoard = oldP.scoreBoard;
-                }
-            });
-            GAME.players = players;
-            updateLobbyUI(players);
+            GAME.players = sanitizePlayers(players);
+            updateLobbyUI(GAME.players);
             if (!document.getElementById('game-screen').classList.contains('hidden')) {
                 renderPlayerProfiles();
                 renderScoreboard();
@@ -470,7 +449,7 @@
         });
 
         socket.on('revealCards', ({ players, cardValues, selections }) => {
-            GAME.players = players;
+            GAME.players = sanitizePlayers(players);
             document.querySelectorAll('.card-inner').forEach(inner => {
                 const idx = inner.parentElement.getAttribute('data-card-index');
                 const orderNum = cardValues[idx];
@@ -501,9 +480,10 @@
         });
 
         socket.on('gameStarted', ({ players, currentTurnIdx }) => {
-            GAME.players = players;
+            GAME.players = sanitizePlayers(players);
             GAME.currentPlayerIdx = currentTurnIdx;
             GAME.rollsLeft = 3;
+            GAME.isRolling = false;
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             setupGamePlay();
@@ -531,12 +511,13 @@
             resetClientTimer();
 
             if (GAME.rollsLeft === 0 && GAME.players[GAME.currentPlayerIdx]?.id === socket.id) {
-                setTimeout(() => openMobileScoreboard(), 1000);
+                setTimeout(() => openMobileScoreboard(), 800);
             }
         });
 
         socket.on('dieToggled', ({ dice }) => {
             GAME.justRolled = false;
+            GAME.isRolling = false;
             GAME.dice = dice;
             syncDiceStatus();
             calculateAllPotentialScores();
@@ -547,6 +528,7 @@
             document.querySelectorAll(".field-dice-active").forEach(el => el.classList.add("animate-suck-in"));
             setTimeout(() => {
                 GAME.justRolled = false;
+                GAME.isRolling = false;
                 GAME.dice = dice;
                 GAME.rollsLeft = 0;
                 document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
@@ -558,30 +540,29 @@
         });
 
         socket.on('scoreRecorded', ({ playerId, category, score, scoreBoard }) => {
+            GAME.isRolling = false;
             const p = GAME.players.find(pl => pl.id === playerId);
-            if (p) p.scoreBoard = scoreBoard;
+            if (p) p.scoreBoard = scoreBoard || {};
             renderScoreboard();
             const targetCell = document.getElementById(`td-score-${category}`);
             if (targetCell) triggerScoreFireworks(targetCell);
-            if (window.innerWidth < 1024) closeMobileScoreboard(); 
+            closeMobileScoreboard(); 
         });
 
         socket.on('nextTurn', ({ currentTurnIdx, round, gameState }) => {
             GAME.currentPlayerIdx = currentTurnIdx;
             GAME.currentRound = round;
-            if (gameState && gameState.dice) GAME.dice = gameState.dice;
-            GAME.rollsLeft = gameState ? (3 - gameState.rollCount) : 3;
+            GAME.dice = gameState.dice;
+            GAME.rollsLeft = 3 - gameState.rollCount;
             GAME.justRolled = false;
             GAME.isRolling = false;
 
             document.getElementById('game-rolls-left').textContent = GAME.rollsLeft;
             document.getElementById('early-stop-btn').disabled = true;
 
-            if (window.innerWidth < 1024) {
-                closeMobileCup();
-                closeMobileScoreboard();
-                closeMobileChat();
-            }
+            closeMobileCup();
+            closeMobileScoreboard();
+            closeMobileChat();
             setupGamePlay();
             resetClientTimer();
         });
@@ -601,7 +582,7 @@
 
         socket.on('gameFinished', ({ players }) => {
             clearInterval(clientTimerInterval);
-            declareGameOverAndRank(players);
+            declareGameOverAndRank(sanitizePlayers(players));
         });
 
         function updateLobbyUI(players) {
@@ -791,7 +772,6 @@
             }
         }
 
-        // 드래그 센서
         let isDragging = false, dragStartX = 0, dragStartY = 0, accumulatedDistance = 0, lastPointerX = 0, lastPointerY = 0, shakeTriggered = false;
         const cup = document.getElementById('dice-cup');
 
@@ -847,6 +827,7 @@
 
         function triggerEarlyStop() {
             if (GAME.players[GAME.currentPlayerIdx]?.id !== socket.id || GAME.rollsLeft === 3) return;
+            GAME.isRolling = false;
             socket.emit('stopReRoll');
         }
 
@@ -871,7 +852,6 @@
             }
         }
 
-        /* 점수판 렌더링 및 이벤트 동기화 */
         function renderScoreboard() {
             const body = document.getElementById('yacht-scoreboard-body');
             if (!body) return;
@@ -879,40 +859,25 @@
             
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
             if (!activePlayer) return;
+            if (!activePlayer.scoreBoard) activePlayer.scoreBoard = {};
 
             const isMyTurn = activePlayer.id === socket.id;
-            const header = document.getElementById('scoreboard-target-header');
-            if (header) header.textContent = `${activePlayer.name}의 기록`;
-
-            const scoreBoard = activePlayer.scoreBoard || {};
+            document.getElementById('scoreboard-target-header').textContent = `${activePlayer.name}의 기록`;
 
             CATEGORIES.forEach(cat => {
-                const score = scoreBoard[cat.id];
-                const hasScore = (score !== undefined && score !== null);
+                const score = activePlayer.scoreBoard[cat.id];
+                const hasScore = score !== undefined;
                 const tr = document.createElement('tr');
-                
-                tr.className = `border-b border-slate-700/40 transition-all ${
-                    hasScore 
-                        ? 'bg-slate-900/30 opacity-60' 
-                        : (isMyTurn ? 'hover:bg-slate-700/50 cursor-pointer' : 'opacity-80')
-                }`;
-                
+                tr.className = `border-b border-slate-700/40 transition-all ${hasScore ? 'bg-slate-900/30 opacity-60' : 'hover:bg-slate-700/30 cursor-pointer'}`;
                 tr.innerHTML = `
-                    <td class="py-2 px-2 font-semibold text-slate-200">
-                        ${cat.name}
-                        <div class="text-[9px] text-slate-500 font-normal">${cat.desc}</div>
-                    </td>
+                    <td class="py-2 px-2 font-semibold text-slate-200">${cat.name}<div class="text-[9px] text-slate-500 font-normal">${cat.desc}</div></td>
                     <td class="py-2 px-2 text-right font-black text-xs" id="td-score-${cat.id}">
                         ${hasScore ? `<span class="text-emerald-400 font-extrabold text-xs">${score}</span>` : `<span class="text-slate-600">-</span>`}
                     </td>
                 `;
-
                 if (!hasScore && isMyTurn) {
                     tr.onclick = () => triggerSelectCategory(cat.id);
-                } else {
-                    tr.onclick = null;
                 }
-                
                 body.appendChild(tr);
             });
             updatePlayerSummaryStats(activePlayer);
@@ -922,40 +887,32 @@
             if (GAME.isRolling) return;
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
             if (!activePlayer) return;
+            if (!activePlayer.scoreBoard) activePlayer.scoreBoard = {};
 
-            const scoreBoard = activePlayer.scoreBoard || {};
             const values = GAME.dice.map(d => d.value);
-
             CATEGORIES.forEach(cat => {
-                if (scoreBoard[cat.id] === undefined || scoreBoard[cat.id] === null) {
+                if (activePlayer.scoreBoard[cat.id] === undefined) {
                     const preview = getComputedScore(cat.id, values);
                     const cell = document.getElementById(`td-score-${cat.id}`);
-                    if (cell) {
-                        cell.innerHTML = `<span class="text-emerald-400/90 font-black animate-pulse">${preview}</span>`;
-                    }
+                    if (cell) cell.innerHTML = `<span class="text-emerald-500/80 font-black animate-pulse">${preview}</span>`;
                 }
             });
         }
 
         function triggerSelectCategory(catId) {
-            const activePlayer = GAME.players[GAME.currentPlayerIdx];
-            if (!activePlayer || activePlayer.id !== socket.id) return;
             if (GAME.rollsLeft === 3) return alert("최소 1번 이상 주사위를 굴려야 기록 가능합니다.");
-            if (GAME.isRolling) return;
-            
-            const scoreBoard = activePlayer.scoreBoard || {};
-            if (scoreBoard[catId] !== undefined && scoreBoard[catId] !== null) return;
+            GAME.isRolling = false; // 주사위 굴림 플래그 안정화
+
+            const activePlayer = GAME.players[GAME.currentPlayerIdx];
+            if (!activePlayer) return;
+            if (!activePlayer.scoreBoard) activePlayer.scoreBoard = {};
+            if (activePlayer.scoreBoard[catId] !== undefined) return;
             
             const calculated = getComputedScore(catId, GAME.dice.map(d => d.value));
             const target = CATEGORIES.find(c => c.id === catId);
-            if (!target) return;
             
-            GAME.selectedCatToConfirm = { category: catId, catId: catId, score: calculated };
-            
-            const textEl = document.getElementById('score-confirm-text');
-            if (textEl) {
-                textEl.innerHTML = `[${target.name}] 항목에 <strong class="text-emerald-400 text-base">${calculated}점</strong>을 확정 기입할까요?`;
-            }
+            GAME.selectedCatToConfirm = { catId, category: catId, score: calculated };
+            document.getElementById('score-confirm-text').innerHTML = `[${target.name}] 항목에 <strong class="text-emerald-400">${calculated}점</strong>을 확정 기입할까요?`;
             document.getElementById('score-confirm-modal').classList.remove('hidden');
         }
 
@@ -963,6 +920,7 @@
             document.getElementById('score-confirm-modal').classList.add('hidden');
             GAME.selectedCatToConfirm = null;
         });
+
         document.getElementById('score-confirm-ok').addEventListener('click', () => {
             if (!GAME.selectedCatToConfirm) return;
             socket.emit('recordScore', GAME.selectedCatToConfirm);
@@ -972,15 +930,15 @@
 
         function updatePlayerSummaryStats(player) {
             if (!player) return;
-            const scoreBoard = player.scoreBoard || {};
+            const board = player.scoreBoard || {};
             let subtotal = 0;
-            ['aces','deuces','threes','fours','fives','hexas'].forEach(k => subtotal += (scoreBoard[k] || 0));
+            ['aces','deuces','threes','fours','fives','hexas'].forEach(k => subtotal += (board[k] || 0));
             const prog = document.getElementById('subtotal-bonus-progress');
             prog.textContent = subtotal >= 63 ? `${subtotal} / 63 (보너스 확정! 🎉)` : `${subtotal} / 63`;
             prog.className = subtotal >= 63 ? "text-emerald-400 font-bold" : "text-slate-400";
             
             let total = subtotal >= 63 ? 35 : 0;
-            Object.keys(scoreBoard).forEach(k => total += (scoreBoard[k] || 0));
+            Object.keys(board).forEach(k => total += (board[k] || 0));
             document.getElementById('current-total-score').textContent = total;
         }
 
@@ -1009,9 +967,9 @@
                 tr.className = "hover:bg-slate-700/20";
                 tr.innerHTML = `<td class="py-2 px-3 text-slate-300 font-semibold border-r border-slate-700">${cat.name}</td>`;
                 GAME.players.forEach(p => {
-                    const sb = p.scoreBoard || {};
-                    const val = sb[cat.id];
-                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== undefined && val !== null ? val : '-'}</td>`;
+                    const board = p.scoreBoard || {};
+                    const val = board[cat.id];
+                    tr.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-slate-400">${val !== undefined ? val : '-'}</td>`;
                 });
                 tbody.appendChild(tr);
             });
@@ -1020,11 +978,11 @@
             fRow.className = "bg-slate-950 font-bold border-t border-slate-600";
             fRow.innerHTML = `<td class="py-2 px-3 text-emerald-400 border-r border-slate-700">종합 합계</td>`;
             GAME.players.forEach(p => {
-                const sb = p.scoreBoard || {};
+                const board = p.scoreBoard || {};
                 let sub = 0;
-                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (sb[k] || 0));
+                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (board[k] || 0));
                 let tot = sub >= 63 ? 35 : 0;
-                Object.keys(sb).forEach(k => tot += (sb[k] || 0));
+                Object.keys(board).forEach(k => tot += (board[k] || 0));
                 fRow.innerHTML += `<td class="py-2 px-3 text-center border-r border-slate-700 text-emerald-400 font-black">${tot}점</td>`;
             });
             tbody.appendChild(fRow); table.appendChild(tbody);
@@ -1032,11 +990,11 @@
 
         function declareGameOverAndRank(finalPlayers) {
             const list = finalPlayers.map(p => {
-                const sb = p.scoreBoard || {};
+                const board = p.scoreBoard || {};
                 let sub = 0;
-                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (sb[k] || 0));
+                ['aces','deuces','threes','fours','fives','hexas'].forEach(k => sub += (board[k] || 0));
                 let tot = sub >= 63 ? 35 : 0;
-                Object.keys(sb).forEach(k => tot += (sb[k] || 0));
+                Object.keys(board).forEach(k => tot += (board[k] || 0));
                 return { name: p.name, total: tot };
             }).sort((a,b) => b.total - a.total);
 
