@@ -234,7 +234,7 @@
                 <span>🏆</span><span>게임 종료! 최종 결과</span>
             </h3>
             <div id="game-over-rank-list" class="space-y-2 mb-6 max-h-64 overflow-y-auto"></div>
-            <button onclick="closeGameOverModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg">확인 (게임 계속하기)</button>
+            <button onclick="restartGame()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg">새 게임 시작하기 🔄</button>
         </div>
     </div>
 
@@ -491,15 +491,32 @@
         });
 
         socket.on('gameStarted', ({ players, currentTurnIdx }) => {
-            GAME.players = sanitizePlayers(players);
-            GAME.currentPlayerIdx = currentTurnIdx;
-            GAME.rollsLeft = 3;
-            GAME.isRolling = false;
+            resetGameStateForNewGame(players, currentTurnIdx);
             document.getElementById('lobby-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
             setupGamePlay();
             resetClientTimer();
         });
+
+        socket.on('gameRestarted', ({ players, currentTurnIdx }) => {
+            resetGameStateForNewGame(players, currentTurnIdx);
+            document.getElementById('game-over-modal').classList.add('hidden');
+            setupGamePlay();
+            resetClientTimer();
+        });
+
+        function resetGameStateForNewGame(players, currentTurnIdx = 0) {
+            GAME.players = players.map(p => ({ ...p, scoreBoard: {} }));
+            GAME.currentPlayerIdx = currentTurnIdx;
+            GAME.currentRound = 1;
+            GAME.rollsLeft = 3;
+            GAME.isRolling = false;
+            GAME.justRolled = false;
+            GAME.dice = Array(5).fill(null).map(() => ({ value: 1, held: false }));
+
+            document.getElementById('game-rolls-left').textContent = '3';
+            document.getElementById('early-stop-btn').disabled = true;
+        }
 
         socket.on('shakingCup', () => {
             document.getElementById('dice-cup').classList.add('cup-shaking');
@@ -1028,8 +1045,9 @@
             document.getElementById('game-over-modal').classList.remove('hidden');
         }
 
-        function closeGameOverModal() {
+        function restartGame() {
             document.getElementById('game-over-modal').classList.add('hidden');
+            socket.emit('restartGame');
         }
     </script>
 </body>
