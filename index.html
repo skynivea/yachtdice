@@ -166,7 +166,7 @@
             <div id="scoreboard-section" class="fixed inset-0 bg-slate-950/95 z-40 hidden flex-col justify-between p-6 lg:relative lg:inset-auto lg:bg-transparent lg:z-auto lg:flex lg:w-80 lg:bg-slate-800 lg:border lg:border-slate-700 lg:rounded-2xl lg:p-4 lg:shadow-xl">
                 <button onclick="closeMobileScoreboard()" class="absolute top-5 right-5 text-slate-400 hover:text-white text-2xl font-black lg:hidden p-2">✕</button>
                 <div>
-                    <div class="flex items-center gap-2 pb-3 border-b border-slate-700 mb-3 relative pt-8 lg:pt-2 overflow-x-auto" id="player-profiles-row"></div>
+                    <div class="flex items-center gap-2 pb-3 border-b border-slate-700 mb-3 relative pt-2 overflow-x-auto" id="player-profiles-row"></div>
                     <div class="flex justify-between items-center mb-2.5">
                         <h2 class="text-xs font-bold text-slate-300">점수판 (요트 족보)</h2>
                         <div class="text-[10px] font-black text-rose-400 bg-rose-950/50 border border-rose-900 px-1.5 py-0.5 rounded animate-pulse">⏱️ <span id="turn-timer-display">60</span>초</div>
@@ -224,6 +224,17 @@
                 <button id="score-confirm-cancel" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold transition-all">취소</button>
                 <button id="score-confirm-ok" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-bold text-white transition-all">기입하기</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 게임 종료 전용 팝업 모달 -->
+    <div id="game-over-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border-2 border-emerald-500 w-full max-w-md rounded-2xl p-6 shadow-2xl text-center relative">
+            <h3 class="text-xl font-black text-emerald-400 mb-4 flex items-center justify-center gap-2">
+                <span>🏆</span><span>게임 종료! 최종 결과</span>
+            </h3>
+            <div id="game-over-rank-list" class="space-y-2 mb-6 max-h-64 overflow-y-auto"></div>
+            <button onclick="closeGameOverModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-lg">확인 (게임 계속하기)</button>
         </div>
     </div>
 
@@ -572,10 +583,10 @@
             if (bubble) {
                 bubble.textContent = emoji;
                 bubble.style.opacity = '1';
-                bubble.style.transform = 'translateY(-10px) scale(1.1)';
+                bubble.style.transform = 'translate(-50%, -50%) scale(1.3)';
                 setTimeout(() => {
                     bubble.style.opacity = '0';
-                    bubble.style.transform = 'translateY(0px) scale(1)';
+                    bubble.style.transform = 'translate(-50%, -50%) scale(0.5)';
                 }, 2000);
             }
         });
@@ -655,7 +666,7 @@
                 avatarEl.className = `flex flex-col items-center p-1.5 rounded-xl border min-w-[65px] relative transition-all duration-300
                     ${isCurrent ? 'bg-emerald-950/60 border-emerald-500 scale-105 shadow-md opacity-100' : 'bg-slate-900 border-slate-800 opacity-40'}`;
                 avatarEl.innerHTML = `
-                    <div id="emoji-bubble-${p.id}" class="absolute -top-8 bg-white border border-slate-200 text-slate-950 text-base font-bold py-0.5 px-2 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50"></div>
+                    <div id="emoji-bubble-${p.id}" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/95 border border-slate-200 text-slate-950 text-xl font-bold py-1 px-2.5 rounded-full shadow-2xl opacity-0 scale-50 transition-all duration-300 pointer-events-none z-50"></div>
                     <img src="${avatar}" class="w-8 h-8 rounded-full bg-slate-800 border" />
                     <span class="text-[9px] font-bold mt-1 text-slate-300 truncate max-w-[55px]">${p.name}</span>
                 `;
@@ -901,7 +912,7 @@
 
         function triggerSelectCategory(catId) {
             if (GAME.rollsLeft === 3) return alert("최소 1번 이상 주사위를 굴려야 기록 가능합니다.");
-            GAME.isRolling = false; // 주사위 굴림 플래그 안정화
+            GAME.isRolling = false;
 
             const activePlayer = GAME.players[GAME.currentPlayerIdx];
             if (!activePlayer) return;
@@ -998,10 +1009,27 @@
                 return { name: p.name, total: tot };
             }).sort((a,b) => b.total - a.total);
 
-            let res = "🎮 게임 종료! 최종 전적 랭킹 🎮\n\n";
-            list.forEach((r, i) => res += `👑 ${i+1}위: ${r.name} (${r.total}점)\n`);
-            alert(res);
-            window.location.reload();
+            const container = document.getElementById('game-over-rank-list');
+            if (container) {
+                container.innerHTML = '';
+                list.forEach((r, i) => {
+                    const div = document.createElement('div');
+                    div.className = `flex items-center justify-between p-3 rounded-xl border ${i === 0 ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-extrabold' : 'bg-slate-900 border-slate-700 text-slate-200'}`;
+                    div.innerHTML = `
+                        <span class="flex items-center gap-2">
+                            <span>${i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤'} ${i + 1}위</span>
+                            <span>${r.name}</span>
+                        </span>
+                        <span class="text-emerald-400 font-black">${r.total}점</span>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        function closeGameOverModal() {
+            document.getElementById('game-over-modal').classList.add('hidden');
         }
     </script>
 </body>
